@@ -15,10 +15,8 @@ func Migrate(db *gorm.DB) error {
 	err := db.AutoMigrate(
 		// 用户和权限相关
 		&models.User{},
-		&models.UserPermission{},
-		&models.UserPermissionGroup{},
-		&models.UserPermissionGroupUser{},
-		&models.UserPermissionGroup{},
+		&models.Team{},
+		&models.TeamMember{},
 
 		// 项目和看板相关
 		&models.Project{},

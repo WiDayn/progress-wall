@@ -69,11 +69,18 @@ func (h *BoardHandler) CreateBoard(c *gin.Context) {
 		return
 	}
 
+	projectIDStr := c.Param("projectId")
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Project ID"})
+		return
+	}
+
 	var createBoardRequest struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
 		Color       string `json:"color"`
-		ProjectID   uint   `json:"project_id" binding:"required"`
+		// ProjectID   uint   `json:"project_id" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&createBoardRequest); err != nil {
@@ -85,7 +92,7 @@ func (h *BoardHandler) CreateBoard(c *gin.Context) {
 		Name:        createBoardRequest.Name,
 		Description: createBoardRequest.Description,
 		Color:       createBoardRequest.Color,
-		ProjectID:   createBoardRequest.ProjectID,
+		ProjectID:   uint(projectID),
 		OwnerID:     userID,
 		Status:      models.BoardStatusActive,
 	}

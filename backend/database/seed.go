@@ -18,11 +18,6 @@ func Seed(db *gorm.DB) error {
 		return err
 	}
 
-	// 创建默认权限
-	if err := createDefaultPermissions(db); err != nil {
-		return err
-	}
-
 	log.Println("基础数据初始化完成")
 	return nil
 }
@@ -43,6 +38,7 @@ func createAdminUser(db *gorm.DB) error {
 		return nil
 	}
 
+	log.Println("未找到admin用户，正在创建...")
 	// 加密管理员密码
 	adminPasswordHash, err := utils.HashPassword("admin123")
 	if err != nil {
@@ -56,6 +52,7 @@ func createAdminUser(db *gorm.DB) error {
 		Password: adminPasswordHash,
 		Nickname: "系统管理员",
 		Status:   models.UserStatusEnabled,
+		SystemRole: models.SystemRoleAdmin,
 	}
 
 	if err := db.Create(&adminUser).Error; err != nil {
@@ -63,23 +60,5 @@ func createAdminUser(db *gorm.DB) error {
 	}
 
 	log.Println("默认用户创建成功: admin")
-	return nil
-}
-
-// createDefaultPermissions 创建默认权限组
-// 该函数负责在系统初始化时创建默认的权限组，包括管理员权限组和访客权限组
-// 参数: db - 数据库连接实例
-// 返回: error - 如果创建失败则返回错误，否则返回nil
-func createDefaultPermissions(db *gorm.DB) error {
-	adminPermissionGroup := models.UserPermissionGroup{
-		GroupName:         "admin",
-		PermissionStrings: "*",
-	}
-	db.Create(&adminPermissionGroup)
-	guestPermissionGroup := models.UserPermissionGroup{
-		GroupName:         "guest",
-		PermissionStrings: "users.list;users.detail",
-	}
-	db.Create(&guestPermissionGroup)
 	return nil
 }

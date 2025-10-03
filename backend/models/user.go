@@ -16,15 +16,14 @@ type User struct {
 	Nickname  string         `json:"nickname" gorm:"size:50" comment:"用户昵称，用于显示，最大50字符"`
 	Avatar    string         `json:"avatar" gorm:"size:255" comment:"头像URL地址，最大255字符"`
 	Phone     string         `json:"phone" gorm:"size:20" comment:"手机号码，最大20字符"`
-	Status    UserStatus     `json:"status" gorm:"type:tinyint;default:1;comment:'用户状态:1=正常,2=禁用,3=删除'" comment:"用户状态，1=正常，2=禁用，3=删除"`
+	Status    UserStatus     `json:"status" gorm:"type:tinyint;default:1;comment:'用户状态:1=正常,2=禁用,3=删除'"`
+	SystemRole SystemRole    `json:"system_role" gorm:"type:tinyint;default:1;comment:'系统角色: 1=普通用户, 2=系统管理员'"`
 	LastLogin *time.Time     `json:"last_login" comment:"最后登录时间，可为空"`
 	CreatedAt time.Time      `json:"created_at" comment:"创建时间"`
 	UpdatedAt time.Time      `json:"updated_at" comment:"更新时间"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index" comment:"软删除时间，用于软删除标记"`
 
 	// 关联关系
-	Permissions      []UserPermission      `json:"permissions,omitempty" gorm:"foreignKey:UserID"`
-	PermissionGroups []UserPermissionGroup `json:"permission_groups,omitempty" gorm:"many2many:user_permission_group_users"`
 	Projects         []Project             `json:"projects,omitempty" gorm:"many2many:project_members"`
 	CreatedTasks     []Task                `json:"created_tasks,omitempty" gorm:"foreignKey:CreatorID"`
 	AssignedTasks    []Task                `json:"assigned_tasks,omitempty" gorm:"foreignKey:AssigneeID"`
@@ -38,4 +37,11 @@ const (
 	UserStatusEnabled  UserStatus = 1 // 正常
 	UserStatusDisabled UserStatus = 2 // 禁用
 	UserStatusDeleted  UserStatus = 3 // 删除
+)
+
+type SystemRole int
+
+const (
+	SystemRoleUser SystemRole = 1
+	SystemRoleAdmin SystemRole = 2
 )
