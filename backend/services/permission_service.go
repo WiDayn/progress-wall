@@ -7,12 +7,11 @@ import (
     "gorm.io/gorm"
 )
 
-// PermissionService handles permission validation logic.
+// Handles permission validation logic.
 type PermissionService struct {
     db *gorm.DB
 }
 
-// NewPermissionService creates a new instance of PermissionService.
 func NewPermissionService(db *gorm.DB) *PermissionService {
     return &PermissionService{db: db}
 }

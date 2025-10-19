@@ -18,7 +18,7 @@ type BoardHandler struct {
 
 // NewBoardHandler 创建看板处理器
 func NewBoardHandler(db *gorm.DB) *BoardHandler {
-	return &BoardHandler{
+	return &BoardHandler {
 		boardService: services.NewBoardService(db),
 	}
 }
@@ -53,6 +53,24 @@ func (h *BoardHandler) GetBoards(c *gin.Context) {
 	}
 
 	boards, err := h.boardService.GetBoardsByUserID(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"boards": boards})
+}
+
+// GET /api/projects/:projectId/boards
+func (h *BoardHandler) GetBoardsByProject(c *gin.Context) {
+	projectIDStr := c.Param("projectId")
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Project ID"})
+		return
+	}
+
+	boards, err := h.boardService.GetBoardsByProjectID(uint(projectID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

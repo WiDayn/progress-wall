@@ -10,6 +10,8 @@ import (
 	"progress-wall-backend/handlers/column"
 	"progress-wall-backend/handlers/task"
 	"progress-wall-backend/handlers/user"
+	"progress-wall-backend/handlers/team"
+	"progress-wall-backend/handlers/project"
 	"progress-wall-backend/middleware"
 	"progress-wall-backend/services"
 
@@ -45,6 +47,8 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	boardHandler := board.NewBoardHandler(db)
 	columnHandler := column.NewColumnHandler(db)
 	taskHandler := task.NewTaskHandler(db)
+	teamHandler := team.NewTeamHandler(db)
+	projectHandler := project.NewProjectHandler(db)
 	boardActivitiesHandler := activity.NewBoardActivitiesHandler(db)
 	taskActivitiesHandler := activity.NewTaskActivitiesHandler(db)
 
@@ -65,9 +69,35 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// 用户相关
 		protected.GET("/user/profile", profileHandler.GetProfile)
 
+		// Team Routes
+		protected.POST("/teams", teamHandler.CreateTeam)
+		protected.GET("/teams", teamHandler.GetMyTeams)
+		protected.GET("/teams/:teamId/members",
+			rbac.RequireTeamAccess("view", "teamId"),
+			teamHandler.GetTeamMembers,
+		)
+		protected.POST("/teams/:teamId/members",
+			rbac.RequireTeamAccess("manage", "teamId"),
+			teamHandler.AddMember,
+		)
+
+		// Project Routes
+		protected.POST("/teams/:teamId/projects",
+			rbac.RequireTeamAccess("manage", "teamId"),
+			projectHandler.CreateProject,
+		)
+		protected.GET("/teams/:teamId/projects",
+			rbac.RequireTeamAccess("view", "teamId"),
+			projectHandler.GetTeamProjects,
+		)
+
 		// 看板相关
 		protected.GET("/boards", boardHandler.GetBoards)
-		protected.POST("/projects/:projectId/boards", boardHandler.CreateBoard, 
+		protected.GET("/projects/:projectId/boards", 
+			rbac.RequireProjectAccess("view", "projectId", "project"),
+			boardHandler.GetBoardsByProject,
+		)
+		protected.POST("/projects/:projectId/boards", 
 			rbac.RequireProjectAccess("manage", "projectId", "project"),
 			boardHandler.CreateBoard,
 		)
