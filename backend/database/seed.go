@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"progress-wall-backend/models"
+	"progress-wall-backend/utils"
 
 	"gorm.io/gorm"
 )
@@ -27,24 +28,29 @@ func Seed(db *gorm.DB) error {
 }
 
 // createDefaultUsers 创建默认用户
-// 该函数负责在系统初始化时创建默认的管理员用户和普通用户
+// 该函数负责在系统初始化时创建默认的管理员用户
 // 参数: db - 数据库连接实例
 // 返回: error - 如果创建失败则返回错误，否则返回nil
 func createDefaultUsers(db *gorm.DB) error {
-	// 检查是否已存在默认用户
-	var count int64
-	db.Model(&models.User{}).Count(&count)
-	if count > 0 {
-		log.Println("用户表不为空，跳过默认用户创建")
+	// 检查admin用户是否已存在
+	var existingUser models.User
+	result := db.Where("username = ?", "admin").First(&existingUser)
+	if result.Error == nil {
+		log.Println("admin用户已存在，跳过创建")
 		return nil
+	}
+
+	// 加密管理员密码
+	adminPasswordHash, err := utils.HashPassword("admin123")
+	if err != nil {
+		return fmt.Errorf("加密管理员密码失败: %w", err)
 	}
 
 	// 创建默认管理员用户
 	adminUser := models.User{
-		ID:       1,
 		Username: "admin",
 		Email:    "admin@example.com",
-		Password: "admin123", // TODO: 等待JWT完成后替换为加密密码
+		Password: adminPasswordHash,
 		Nickname: "系统管理员",
 		Status:   models.UserStatusEnabled,
 	}
@@ -53,21 +59,7 @@ func createDefaultUsers(db *gorm.DB) error {
 		return fmt.Errorf("创建默认管理员用户失败: %w", err)
 	}
 
-	// 创建默认普通用户
-	guestUser := models.User{
-		ID:       2,
-		Username: "guest",
-		Email:    "guest@example.com",
-		Password: "guest123", // TODO: 等待JWT完成后替换为加密密码
-		Nickname: "访客用户",
-		Status:   models.UserStatusEnabled,
-	}
-
-	if err := db.Create(&guestUser).Error; err != nil {
-		return fmt.Errorf("创建默认访客用户失败: %w", err)
-	}
-
-	log.Println("默认用户创建成功: admin, guest")
+	log.Println("默认用户创建成功: admin")
 	return nil
 }
 
