@@ -3,6 +3,7 @@ package routes
 import (
 	"progress-wall-backend/config"
 	"progress-wall-backend/handlers/auth"
+	"progress-wall-backend/handlers/user"
 	"progress-wall-backend/middleware"
 	"strings"
 
@@ -31,6 +32,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	// 初始化处理器
 	loginHandler := auth.NewLoginHandler(db, cfg)
 	registerHandler := auth.NewRegisterHandler(db, cfg)
+	profileHandler := user.NewProfileHandler(db)
 
 	// 公开路由（不需要认证）
 	api := r.Group("/api")
@@ -46,8 +48,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware(cfg))
 	{
-		// 这里可以添加需要认证的路由
-		// 例如: protected.GET("/profile", userHandler.GetProfile)
+		protected.GET("/user/profile", profileHandler.GetProfile)
 	}
 
 	return r
