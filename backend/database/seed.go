@@ -13,8 +13,8 @@ import (
 func Seed(db *gorm.DB) error {
 	log.Println("开始初始化基础数据...")
 
-	// 创建默认用户
-	if err := createDefaultUsers(db); err != nil {
+	// 创建默认管理员用户
+	if err := createAdminUser(db); err != nil {
 		return err
 	}
 
@@ -27,15 +27,18 @@ func Seed(db *gorm.DB) error {
 	return nil
 }
 
-// createDefaultUsers 创建默认用户
-// 该函数负责在系统初始化时创建默认的管理员用户
+// createAdminUser 创建默认管理员用户
+// 该函数负责在系统初始化时创建默认的管理员用户（username: admin, password: admin123）
+// 如果管理员用户已存在，则跳过创建
 // 参数: db - 数据库连接实例
 // 返回: error - 如果创建失败则返回错误，否则返回nil
-func createDefaultUsers(db *gorm.DB) error {
+func createAdminUser(db *gorm.DB) error {
 	// 检查admin用户是否已存在
-	var existingUser models.User
-	result := db.Where("username = ?", "admin").First(&existingUser)
-	if result.Error == nil {
+	var count int64
+	if err := db.Model(&models.User{}).Where("username = ?", "admin").Count(&count).Error; err != nil {
+		return fmt.Errorf("检查admin用户是否存在时出错: %w", err)
+	}
+	if count > 0 {
 		log.Println("admin用户已存在，跳过创建")
 		return nil
 	}
