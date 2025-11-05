@@ -5,6 +5,7 @@ import (
 	"log"
 	"progress-wall-backend/config"
 	"progress-wall-backend/database"
+	"progress-wall-backend/routes"
 )
 
 func main() {
@@ -37,4 +38,14 @@ func main() {
 	}
 
 	log.Println("数据库初始化完成")
+
+	// 设置路由
+	r := routes.SetupRoutes(db, cfg)
+
+	// 启动HTTP服务器
+	addr := fmt.Sprintf(":%s", cfg.Server.Port)
+	log.Printf("服务器启动在端口 %s\n", cfg.Server.Port)
+	if err := r.Run(addr); err != nil {
+		log.Fatal("服务器启动失败:", err)
+	}
 }
