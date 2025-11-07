@@ -14,7 +14,7 @@ type HandlerDependencies struct {
 func NewRouter(deps HandlerDependencies) *gin.Engine {
 	router := gin.Default()
 
-	// 配置 CORS 中间件
+	// CORS 配置
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -23,11 +23,12 @@ func NewRouter(deps HandlerDependencies) *gin.Engine {
 		AllowCredentials: true,
 	}))
 
-	userhandler := NewUserHandler(deps.UserService)
-	// 用户相关路由
-	userGroup := router.Group("/api/users")
+	// 用户相关路由组
+	userHandler := NewUserHandler(deps.UserService)
+	userGroup := router.Group("/api/auth")
 	{
-		userGroup.POST("/register", userhandler.Register)
+		userGroup.POST("/register", userHandler.Register) // 注册
+		userGroup.POST("/login", userHandler.Login)       // 登录
 	}
 
 	return router

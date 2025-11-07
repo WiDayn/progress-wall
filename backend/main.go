@@ -9,12 +9,22 @@ import (
 	"progress-wall-backend/router"
 	"progress-wall-backend/services"
 
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	// 加载配置
+
 	cfg := config.Load()
+
+	// 打印数据库配置，检查用户名/密码是否正确
+	fmt.Printf("DB_USER=%s, DB_PASSWORD=%s, DB_HOST=%s\n", cfg.DB.User, cfg.DB.Password, cfg.DB.Host)
+
+	// 下面是你原来的 InitDB 调用
+	if err := database.InitDB(cfg); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
 
 	// 初始化数据库
 	if err := database.InitDB(cfg); err != nil {
@@ -34,7 +44,7 @@ func main() {
 
 	// 初始化依赖注入层
 	userRepo := repository.NewUserRepository(db)
-	userService := services.NewUserService(userRepo)
+	userService := services.NewUserService(userRepo, cfg)
 
 	// 初始化路由
 	deps := router.HandlerDependencies{
