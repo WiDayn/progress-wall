@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { taskApiService } from '@/services'
 
 export interface Task {
   id: string
@@ -209,17 +210,19 @@ export const useKanbanStore = defineStore('kanban', () => {
     }
   }
 
-  // 模拟API调用移动任务
+  // 调用真实API移动任务
   const moveTaskAPI = async (taskId: string, request: MoveTaskRequest): Promise<MoveTaskResponse> => {
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 200))
+    const response = await taskApiService.moveTask(taskId, request)
     
-    // 模拟API调用
-    console.log(`PATCH /api/tasks/${taskId}/move`, request)
+    // 适配 API 响应格式
+    if (response.data) {
+      return response.data
+    }
     
-    // 模拟成功响应
+    // 如果API调用失败，返回失败响应
     return {
-      success: true
+      success: false,
+      message: response.msg || '移动任务失败'
     }
   }
 
@@ -234,32 +237,20 @@ export const useKanbanStore = defineStore('kanban', () => {
   }
 
 
-  // 模拟API调用获取任务详情
+  // 调用真实API获取任务详情
   const fetchTaskDetail = async (taskId: string): Promise<TaskDetailResponse> => {
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 300))
+    const response = await taskApiService.getTaskDetail(taskId)
     
-    // 在所有列中查找任务
-    let foundTask: Task | null = null
-    for (const column of columns.value) {
-      const task = column.tasks.find(t => t.id === taskId)
-      if (task) {
-        foundTask = task
-        break
-      }
+    // 适配 API 响应格式
+    if (response.data) {
+      return response.data
     }
-
-    if (foundTask) {
-      return {
-        success: true,
-        data: foundTask
-      }
-    } else {
-      return {
-        success: false,
-        data: {} as Task,
-        message: '任务不存在'
-      }
+    
+    // 如果API调用失败，返回失败响应
+    return {
+      success: false,
+      data: {} as Task,
+      message: response.msg || '获取任务详情失败'
     }
   }
 

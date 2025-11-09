@@ -60,23 +60,35 @@ const kanbanStore = useKanbanStore()
 const onDragEnd = async (event: any) => {
   const { item, to, from, newIndex, oldIndex } = event
   
-  // 获取被拖拽的任务ID
-  const taskId = item.querySelector('[data-task-id]')?.getAttribute('data-task-id')
-  if (!taskId) return
+  // 获取被拖拽的任务ID - item 本身就是 Card 元素
+  const taskId = item.getAttribute('data-task-id')
+  console.log('拖拽结束 - taskId:', taskId, 'event:', event)
+  if (!taskId) {
+    console.error('未找到 taskId')
+    return
+  }
 
   // 获取目标列ID
   const targetColumnElement = to.closest('[data-column-id]')
   const targetColumnId = targetColumnElement?.getAttribute('data-column-id')
-  if (!targetColumnId) return
+  console.log('目标列 - targetColumnId:', targetColumnId)
+  if (!targetColumnId) {
+    console.error('未找到 targetColumnId')
+    return
+  }
 
   // 如果是同一列内的重新排序，或者跨列移动
   if (from !== to || newIndex !== oldIndex) {
+    console.log('开始调用API - taskId:', taskId, 'targetColumnId:', targetColumnId, 'newIndex:', newIndex)
     try {
       await kanbanStore.moveTaskWithDrag(taskId, targetColumnId, newIndex)
+      console.log('API调用成功')
     } catch (error) {
       console.error('拖拽移动任务失败:', error)
       // 这里可以添加错误提示
     }
+  } else {
+    console.log('未触发移动 - 位置未改变')
   }
 }
 </script>

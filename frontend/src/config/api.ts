@@ -29,6 +29,16 @@ export const API_CONFIG = {
       path: '/dashboard/kanban',
       method: 'DELETE'
     },
+    
+    // 任务相关
+    TASK_DETAIL: {
+      path: '/tasks',
+      method: 'GET'
+    },
+    TASK_MOVE: {
+      path: '/tasks',
+      method: 'POST'
+    },
   }
 } as const
 
