@@ -13,6 +13,7 @@ export interface TaskDetailResponse {
 }
 
 export interface MoveTaskRequest {
+  taskId: string
   newColumnId: string
   newOrder: number
 }
@@ -38,11 +39,17 @@ export class TaskApiService extends BaseApiService {
   }
 
   async moveTask(taskId: string, request: MoveTaskRequest): Promise<ApiResponse<MoveTaskResponse>> {
-    const url = `${getEndpointUrl('TASK_MOVE')}/${taskId}/move`
+    const url = `${getEndpointUrl('TASK_MOVE')}/move`
+    
+    // 将 taskId 合并到请求体中
+    const requestBody = {
+      ...request,
+      taskId
+    }
     
     return this.request<MoveTaskResponse>(url, {
       method: getEndpointMethod('TASK_MOVE'),
-      body: JSON.stringify(request),
+      body: JSON.stringify(requestBody),
     })
   }
 }

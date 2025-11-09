@@ -212,6 +212,7 @@ export const useKanbanStore = defineStore('kanban', () => {
 
   // 调用真实API移动任务
   const moveTaskAPI = async (taskId: string, request: MoveTaskRequest): Promise<MoveTaskResponse> => {
+    // taskId 会在 service 层自动合并到请求体中
     const response = await taskApiService.moveTask(taskId, request)
     
     // 适配 API 响应格式
