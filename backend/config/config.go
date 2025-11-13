@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -38,6 +39,9 @@ type CORSConfig struct {
 }
 
 func Load() *Config {
+	if err := godotenv.Load("config.env"); err != nil {
+		fmt.Println("Warning: config.env not found, using system env")
+	}
 	// 加载环境变量文件
 	_ = godotenv.Load()
 
@@ -47,7 +51,7 @@ func Load() *Config {
 			Mode: getEnv("SERVER_MODE", "debug"),
 		},
 		DB: DatabaseConfig{
-			Type:     getEnv("DB_TYPE", "sqlite"),
+			Type:     getEnv("DB_TYPE", "mysql"),
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "3306"),
 			Name:     getEnv("DB_NAME", "progress_wall"),

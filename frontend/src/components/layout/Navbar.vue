@@ -62,12 +62,8 @@
           </template>
           
           <template v-else>
-            <Button @click="showLoginModal = true" variant="outline" size="sm">
-              登录
-            </Button>
-            <Button @click="showRegisterModal = true" size="sm">
-              注册
-            </Button>
+            <Button @click="router.push('/login')" variant="outline" size="sm">登录</Button>
+            <Button @click="router.push('/register')" size="sm">注册</Button>
           </template>
         </div>
       </div>
