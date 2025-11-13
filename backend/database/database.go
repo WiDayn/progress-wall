@@ -4,81 +4,50 @@ import (
 	"fmt"
 	"log"
 	"progress-wall-backend/config"
-	"sync"
-	"time"
 
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-var (
-	DB   *gorm.DB
-	once sync.Once
-)
-
-// InitDB initializes the database connection based on configuration
-func InitDB(cfg *config.Config) error {
+// InitDB 初始化数据库连接
+func InitDB(cfg *config.Config) (*gorm.DB, error) {
+	var db *gorm.DB
 	var err error
 
-	once.Do(func() {
-		// 构造 MySQL DSN
+	// 配置GORM日志
+	dbConfig := &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	}
+
+	switch cfg.DB.Type {
+	case "mysql":
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-			cfg.DB.User,
-			cfg.DB.Password,
-			cfg.DB.Host,
-			cfg.DB.Port,
-			cfg.DB.Name,
-		)
-
-		// 初始化 GORM 配置
-		gormConfig := &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
-		}
-		if cfg.Server.Mode == "release" {
-			gormConfig.Logger = logger.Default.LogMode(logger.Silent)
-		}
-
-		// 连接数据库
-		DB, err = gorm.Open(mysql.Open(dsn), gormConfig)
+			cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.Port, cfg.DB.Name)
+		db, err = gorm.Open(mysql.Open(dsn), dbConfig)
 		if err != nil {
-			err = fmt.Errorf("failed to connect to database: %v", err)
-			return
+			return nil, fmt.Errorf("MySQL数据库连接失败: %w", err)
 		}
-
-		// 配置连接池
-		sqlDB, err := DB.DB()
+	case "sqlite":
+		db, err = gorm.Open(sqlite.Open(cfg.DB.Name+".db"), dbConfig)
 		if err != nil {
-			err = fmt.Errorf("failed to get underlying sql.DB: %v", err)
-			return
+			return nil, fmt.Errorf("SQLite数据库连接失败: %w", err)
 		}
-
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetConnMaxLifetime(time.Hour)
-
-		log.Printf("Database connected successfully (Type: mysql)")
-	})
-
-	return err
-}
-
-// GetDB returns the initialized *gorm.DB
-func GetDB() *gorm.DB {
-	if DB == nil {
-		log.Fatal("Database not initialized. Call InitDB first.")
+	default:
+		return nil, fmt.Errorf("不支持的数据库类型: %s", cfg.DB.Type)
 	}
-	return DB
-}
 
-// CloseDB closes the underlying database connection
-func CloseDB() error {
-	if DB != nil {
-		sqlDB, err := DB.DB()
-		if err != nil {
-			return err
-		}
-		return sqlDB.Close()
+	// 配置连接池
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("获取数据库连接实例失败: %w", err)
 	}
-	return nil
+
+	// 设置连接池参数
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+
+	log.Printf("数据库连接成功: %s", cfg.DB.Type)
+	return db, nil
 }

@@ -4,14 +4,7 @@ import (
 	"log"
 	"progress-wall-backend/config"
 	"progress-wall-backend/database"
-	"progress-wall-backend/models"
-	"progress-wall-backend/repository"
-	"progress-wall-backend/router"
-	"progress-wall-backend/services"
-
-	"fmt"
-
-	"github.com/gin-gonic/gin"
+	"progress-wall-backend/routes"
 )
 
 func main() {
@@ -52,9 +45,31 @@ func main() {
 	}
 	r := router.NewRouter(deps)
 
-	// 启动服务器
-	log.Printf("Server starting on port %s", cfg.Server.Port)
-	if err := r.Run(":" + cfg.Server.Port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	// 初始化数据库
+	db, err := database.InitDB(cfg)
+	if err != nil {
+		log.Fatal("数据库初始化失败:", err)
+	}
+
+	// 执行数据库迁移
+	if err := database.Migrate(db); err != nil {
+		log.Fatal("数据库迁移失败:", err)
+	}
+
+	// 初始化基础数据
+	if err := database.Seed(db); err != nil {
+		log.Fatal("初始化基础数据失败:", err)
+	}
+
+	log.Println("数据库初始化完成")
+
+	// 设置路由
+	r := routes.SetupRoutes(db, cfg)
+
+	// 启动HTTP服务器
+	addr := fmt.Sprintf(":%s", cfg.Server.Port)
+	log.Printf("服务器启动在端口 %s\n", cfg.Server.Port)
+	if err := r.Run(addr); err != nil {
+		log.Fatal("服务器启动失败:", err)
 	}
 }
