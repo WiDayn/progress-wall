@@ -70,6 +70,7 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Input from '@/components/ui/Input.vue'
+import { sanitizeInput } from '@/utils/validation'
 
 const username = ref('')
 const password = ref('')
@@ -82,18 +83,35 @@ const userStore = useUserStore()
 const handleLogin = async () => {
   if (loading.value) return
   
+  // 基本验证
+  if (!username.value || !username.value.trim()) {
+    errorMessage.value = '请输入用户名或邮箱'
+    return
+  }
+  
+  if (!password.value) {
+    errorMessage.value = '请输入密码'
+    return
+  }
+  
   errorMessage.value = ''
   loading.value = true
 
   try {
-    const success = await userStore.login(username.value, password.value)
+    // 清理输入数据，防止XSS
+    const sanitizedUsername = sanitizeInput(username.value)
+    
+    const success = await userStore.login(sanitizedUsername, password.value)
     if (success) {
       router.push('/')
     } else {
       errorMessage.value = '登录失败，请检查用户名和密码'
     }
   } catch (err: any) {
-    errorMessage.value = typeof err === 'string' ? err : '登录过程中出现错误'
+    const errorMsg = typeof err === 'string' 
+      ? err 
+      : err?.response?.data?.error || '登录过程中出现错误'
+    errorMessage.value = errorMsg
   } finally {
     loading.value = false
   }

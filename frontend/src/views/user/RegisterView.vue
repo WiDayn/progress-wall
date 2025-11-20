@@ -19,10 +19,12 @@
               type="text"
               required
               autocomplete="username"
-              placeholder="请输入用户名"
+              placeholder="请输入用户名（3-20个字符）"
               minlength="3"
               maxlength="20"
+              @blur="validateUsernameField"
             />
+            <p v-if="usernameError" class="text-sm text-destructive">{{ usernameError }}</p>
           </div>
 
           <div class="space-y-2">
@@ -36,7 +38,9 @@
               required
               autocomplete="email"
               placeholder="请输入邮箱地址"
+              @blur="validateEmailField"
             />
+            <p v-if="emailError" class="text-sm text-destructive">{{ emailError }}</p>
           </div>
 
           <div class="space-y-2">
@@ -48,8 +52,11 @@
               v-model="nickname"
               type="text"
               autocomplete="nickname"
-              placeholder="请输入昵称（可选）"
+              placeholder="请输入昵称（可选，最多50个字符）"
+              maxlength="50"
+              @blur="validateNicknameField"
             />
+            <p v-if="nicknameError" class="text-sm text-destructive">{{ nicknameError }}</p>
           </div>
 
           <div class="space-y-2">
@@ -62,9 +69,12 @@
               type="password"
               required
               autocomplete="new-password"
-              placeholder="请输入密码（至少6位）"
+              placeholder="请输入密码（至少6位，包含字母和数字）"
               minlength="6"
+              maxlength="128"
+              @blur="validatePasswordField"
             />
+            <p v-if="passwordError" class="text-sm text-destructive">{{ passwordError }}</p>
           </div>
 
           <div class="space-y-2">
@@ -79,7 +89,9 @@
               autocomplete="new-password"
               placeholder="请再次输入密码"
               minlength="6"
+              @blur="validateConfirmPasswordField"
             />
+            <p v-if="confirmPasswordError" class="text-sm text-destructive">{{ confirmPasswordError }}</p>
           </div>
 
           <div v-if="errorMessage" class="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
@@ -115,6 +127,13 @@ import Card from '@/components/ui/Card.vue'
 import CardHeader from '@/components/ui/CardHeader.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Input from '@/components/ui/Input.vue'
+import {
+  validateUsername,
+  validateEmail,
+  validatePassword,
+  validateNickname,
+  sanitizeInput
+} from '@/utils/validation'
 
 const username = ref('')
 const email = ref('')
@@ -124,27 +143,94 @@ const nickname = ref('')
 const errorMessage = ref('')
 const loading = ref(false)
 
+// 字段级错误提示
+const usernameError = ref('')
+const emailError = ref('')
+const passwordError = ref('')
+const confirmPasswordError = ref('')
+const nicknameError = ref('')
+
 const router = useRouter()
 const userStore = useUserStore()
+
+// 实时验证用户名
+const validateUsernameField = () => {
+  const result = validateUsername(username.value)
+  usernameError.value = result.valid ? '' : (result.message || '')
+  return result.valid
+}
+
+// 实时验证邮箱
+const validateEmailField = () => {
+  const result = validateEmail(email.value)
+  emailError.value = result.valid ? '' : (result.message || '')
+  return result.valid
+}
+
+// 实时验证密码
+const validatePasswordField = () => {
+  const result = validatePassword(password.value)
+  passwordError.value = result.valid ? '' : (result.message || '')
+  return result.valid
+}
+
+// 实时验证确认密码
+const validateConfirmPasswordField = () => {
+  if (!confirmPassword.value) {
+    confirmPasswordError.value = ''
+    return true
+  }
+  if (password.value !== confirmPassword.value) {
+    confirmPasswordError.value = '两次输入的密码不一致'
+    return false
+  }
+  confirmPasswordError.value = ''
+  return true
+}
+
+// 实时验证昵称
+const validateNicknameField = () => {
+  const result = validateNickname(nickname.value)
+  nicknameError.value = result.valid ? '' : (result.message || '')
+  return result.valid
+}
 
 const handleRegister = async () => {
   if (loading.value) return
 
-  // 验证密码匹配
-  if (password.value !== confirmPassword.value) {
-    errorMessage.value = '两次输入的密码不一致'
+  // 清除所有错误
+  errorMessage.value = ''
+  usernameError.value = ''
+  emailError.value = ''
+  passwordError.value = ''
+  confirmPasswordError.value = ''
+  nicknameError.value = ''
+
+  // 验证所有字段
+  const isUsernameValid = validateUsernameField()
+  const isEmailValid = validateEmailField()
+  const isPasswordValid = validatePasswordField()
+  const isConfirmPasswordValid = validateConfirmPasswordField()
+  const isNicknameValid = validateNicknameField()
+
+  if (!isUsernameValid || !isEmailValid || !isPasswordValid || !isConfirmPasswordValid || !isNicknameValid) {
+    errorMessage.value = '请检查并修正表单中的错误'
     return
   }
 
-  errorMessage.value = ''
   loading.value = true
 
   try {
+    // 清理输入数据，防止XSS
+    const sanitizedUsername = sanitizeInput(username.value)
+    const sanitizedEmail = sanitizeInput(email.value)
+    const sanitizedNickname = nickname.value ? sanitizeInput(nickname.value) : ''
+
     const user = await userStore.register(
-      username.value,
-      email.value,
-      password.value,
-      nickname.value || ''
+      sanitizedUsername,
+      sanitizedEmail,
+      password.value, // 密码不需要HTML转义，但需要确保不包含特殊字符
+      sanitizedNickname
     )
     if (user) {
       router.push('/login')
@@ -152,7 +238,8 @@ const handleRegister = async () => {
       errorMessage.value = '注册失败，请稍后重试'
     }
   } catch (err: any) {
-    errorMessage.value = typeof err === 'string' ? err : '注册过程中出现错误'
+    const errorMsg = typeof err === 'string' ? err : err?.response?.data?.error || '注册过程中出现错误'
+    errorMessage.value = errorMsg
   } finally {
     loading.value = false
   }
