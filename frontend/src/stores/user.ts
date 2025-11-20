@@ -26,19 +26,21 @@ export const useUserStore = defineStore('user', () => {
   function getToken() {
     return token.value
   }
-  async function login(email: string, password: string) {
-  try {
-    const res = await api.post('/auth/login', { email, password })
-    if (res.data?.token) { // 改成 token
-      setToken(res.data.token)
-      currentUser.value = res.data.user
-      return true
+  async function login(username: string, password: string) {
+    try {
+      const res = await api.post('/auth/login', { username, password })
+      if (res.data?.accessToken) {
+        setToken(res.data.accessToken)
+        currentUser.value = res.data.user
+        isLoggedIn.value = true
+        return true
+      }
+      return false
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || err?.message || '登录失败'
+      throw errorMsg
     }
-    return false
-  } catch (err: any) {
-    throw err?.response?.data?.error || '登录失败'
   }
-}
 
   async function register(username: string, email: string, password: string, nickname: string) {
   try {
@@ -54,20 +56,28 @@ export const useUserStore = defineStore('user', () => {
 
 
   // 页面刷新时自动恢复登录状态
- if (token.value && !currentUser.value) {
-  api.get('/user/profile').then(res => {
-    currentUser.value = res.data
-    isLoggedIn.value = true
-  }).catch(() => {
-    logout()
-  })
-}
+  async function restoreUser() {
+    if (token.value && !currentUser.value) {
+      try {
+        const res = await api.get('/user/profile')
+        if (res.data?.user) {
+          currentUser.value = res.data.user
+          isLoggedIn.value = true
+        }
+      } catch {
+        logout()
+      }
+    }
+  }
 
-function logout() {
-  setToken(null)
-  currentUser.value = null
-}
+  function logout() {
+    setToken(null)
+    currentUser.value = null
+    isLoggedIn.value = false
+  }
 
+  // 初始化时恢复用户状态
+  restoreUser()
 
-  return { token, currentUser, isLoggedIn, setToken, getToken, login, register, logout }
+  return { token, currentUser, isLoggedIn, setToken, getToken, login, register, logout, restoreUser }
 })

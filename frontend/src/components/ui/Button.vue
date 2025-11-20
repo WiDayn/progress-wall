@@ -4,13 +4,15 @@
       buttonVariants({ variant, size }),
       typeof $attrs.class === 'string' ? $attrs.class : undefined
     )"
-    v-bind="$attrs"
+    :type="type"
+    v-bind="buttonAttrs"
   >
     <slot />
   </button>
 </template>
 
 <script setup lang="ts">
+import { computed, useAttrs } from 'vue'
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
@@ -46,7 +48,16 @@ const buttonVariants = cva(
 interface Props {
   variant?: VariantProps<typeof buttonVariants>["variant"]
   size?: VariantProps<typeof buttonVariants>["size"]
+  type?: 'button' | 'submit' | 'reset'
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  type: 'button'
+})
+
+const attrs = useAttrs()
+const buttonAttrs = computed(() => {
+  const { class: _, type: __, ...rest } = attrs as Record<string, any>
+  return rest
+})
 </script>
