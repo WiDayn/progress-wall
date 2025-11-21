@@ -2,6 +2,7 @@ package user
 
 import (
 	"net/http"
+
 	"progress-wall-backend/services"
 
 	"github.com/gin-gonic/gin"

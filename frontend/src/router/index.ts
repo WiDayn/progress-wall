@@ -20,6 +20,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/user/RegisterView.vue')
   },
   {
+    path: '/boards',
+    name: 'Boards',
+    component: () => import('@/views/dashboard/BoardListView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/kanban',
     name: 'Kanban',
     component: () => import('@/views/dashboard/KanbanView.vue'),

@@ -1,64 +1,36 @@
 package main
 
 import (
+	"fmt"
 	"log"
+
 	"progress-wall-backend/config"
 	"progress-wall-backend/database"
 	"progress-wall-backend/routes"
 )
 
 func main() {
-
+	// 加载配置
 	cfg := config.Load()
 
-	// 打印数据库配置，检查用户名/密码是否正确
-	fmt.Printf("DB_USER=%s, DB_PASSWORD=%s, DB_HOST=%s\n", cfg.DB.User, cfg.DB.Password, cfg.DB.Host)
+	// 打印配置信息（不打印敏感信息）
+	log.Printf("服务器配置: 端口=%s, 模式=%s, 数据库类型=%s",
+		cfg.Server.Port, cfg.Server.Mode, cfg.DB.Type)
 
-	// 下面是你原来的 InitDB 调用
-	if err := database.InitDB(cfg); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
-
-	// 初始化数据库
-	if err := database.InitDB(cfg); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
-
-	// 获取数据库实例
-	db := database.GetDB()
-
-	// 自动迁移数据库表
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
-	}
-
-	// 设置Gin模式
-	gin.SetMode(cfg.Server.Mode)
-
-	// 初始化依赖注入层
-	userRepo := repository.NewUserRepository(db)
-	userService := services.NewUserService(userRepo, cfg)
-
-	// 初始化路由
-	deps := router.HandlerDependencies{
-		UserService: userService,
-	}
-	r := router.NewRouter(deps)
-
-	// 初始化数据库
+	// 初始化数据库连接
 	db, err := database.InitDB(cfg)
 	if err != nil {
-		log.Fatal("数据库初始化失败:", err)
+		log.Fatalf("数据库初始化失败: %v", err)
 	}
 
 	// 执行数据库迁移
 	if err := database.Migrate(db); err != nil {
-		log.Fatal("数据库迁移失败:", err)
+		log.Fatalf("数据库迁移失败: %v", err)
 	}
 
 	// 初始化基础数据
 	if err := database.Seed(db); err != nil {
-		log.Fatal("初始化基础数据失败:", err)
+		log.Fatalf("初始化基础数据失败: %v", err)
 	}
 
 	log.Println("数据库初始化完成")
@@ -68,8 +40,8 @@ func main() {
 
 	// 启动HTTP服务器
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
-	log.Printf("服务器启动在端口 %s\n", cfg.Server.Port)
+	log.Printf("服务器启动在端口 %s", cfg.Server.Port)
 	if err := r.Run(addr); err != nil {
-		log.Fatal("服务器启动失败:", err)
+		log.Fatalf("服务器启动失败: %v", err)
 	}
 }
