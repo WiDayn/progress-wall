@@ -2,10 +2,11 @@ package services
 
 import (
 	"errors"
+	"time"
+
 	"progress-wall-backend/config"
 	"progress-wall-backend/models"
 	"progress-wall-backend/utils"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -116,9 +117,19 @@ func (s *AuthService) Register(req RegisterRequest) (*RegisterResult, error) {
 		return nil, ErrUserExists
 	}
 
-	// 验证密码长度（至少6位）
-	if len(req.Password) < 6 {
+	// 验证密码强度
+	if err := utils.ValidatePasswordStrength(req.Password); err != nil {
 		return nil, ErrInvalidPassword
+	}
+
+	// 验证邮箱格式
+	if !utils.ValidateEmail(req.Email) {
+		return nil, errors.New("邮箱格式不正确")
+	}
+
+	// 验证用户名格式（3-20个字符，只能包含字母、数字、下划线）
+	if len(req.Username) < 3 || len(req.Username) > 20 {
+		return nil, errors.New("用户名长度必须在3-20个字符之间")
 	}
 
 	// 加密密码
