@@ -1,5 +1,4 @@
-import { BaseApiService, type ApiResponse } from './base-api'
-import { getEndpointUrl, getEndpointMethod } from '@/config/api'
+import api from '@/lib/api'
 import type { Task } from '@/stores/kanban'
 
 export interface TaskDetailRequest {
@@ -13,44 +12,70 @@ export interface TaskDetailResponse {
 }
 
 export interface MoveTaskRequest {
-  taskId: string
-  newColumnId: string
+  newColumnId: number
   newOrder: number
 }
 
 export interface MoveTaskResponse {
-  success: boolean
-  message?: string
-  data?: {
-    taskId: string
-    columnId: string
-    position: number
-  }
+  message: string
 }
 
-export class TaskApiService extends BaseApiService {
+// API 响应格式
+export interface ApiResponse<T> {
+  msg: string
+  data: T
+}
+
+export class TaskApiService {
   
+  /**
+   * 获取任务详情
+   * 需要认证：Bearer Token (JWT)
+   */
   async getTaskDetail(taskId: string): Promise<ApiResponse<TaskDetailResponse>> {
-    const url = `${getEndpointUrl('TASK_DETAIL')}/${taskId}`
-    
-    return this.request<TaskDetailResponse>(url, {
-      method: getEndpointMethod('TASK_DETAIL')
-    })
+    try {
+      const response = await api.get(`/tasks/${taskId}`)
+      return response.data
+    } catch (error: any) {
+      return {
+        msg: error.response?.data?.msg || error.message || '获取任务详情失败',
+        data: {
+          success: false,
+          data: {} as Task,
+          message: error.response?.data?.msg || error.message
+        }
+      }
+    }
   }
 
-  async moveTask(taskId: string, request: MoveTaskRequest): Promise<ApiResponse<MoveTaskResponse>> {
-    const url = `${getEndpointUrl('TASK_MOVE')}/move`
-    
-    // 将 taskId 合并到请求体中
-    const requestBody = {
-      ...request,
-      taskId
+  /**
+   * 移动任务（拖拽排序）
+   * 需要认证：Bearer Token (JWT)
+   * 
+   * 支持：
+   * - 跨列移动：将任务从一个列移动到另一个列
+   * - 同列内移动：在同一列内调整任务顺序
+   * 
+   * @param taskId - 任务ID
+   * @param request - 包含 newColumnId 和 newOrder
+   * @returns 移动成功的消息
+   */
+  async moveTask(taskId: string | number, request: MoveTaskRequest): Promise<MoveTaskResponse> {
+    try {
+      const response = await api.patch(`/tasks/${taskId}/move`, request)
+      return response.data
+    } catch (error: any) {
+      console.error('移动任务失败:', error.response?.data || error.message)
+      
+      // 处理不同的错误状态
+      if (error.response?.status === 400) {
+        throw new Error('请求参数错误（缺少 newColumnId 或 newOrder）')
+      } else if (error.response?.status === 404) {
+        throw new Error('任务不存在')
+      } else {
+        throw new Error(error.response?.data?.message || error.message || '移动任务失败')
+      }
     }
-    
-    return this.request<MoveTaskResponse>(url, {
-      method: getEndpointMethod('TASK_MOVE'),
-      body: JSON.stringify(requestBody),
-    })
   }
 }
 

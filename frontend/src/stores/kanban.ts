@@ -27,13 +27,12 @@ export interface TaskDetailResponse {
 }
 
 export interface MoveTaskRequest {
-  newColumnId: string
+  newColumnId: number
   newOrder: number
 }
 
 export interface MoveTaskResponse {
-  success: boolean
-  message?: string
+  message: string
 }
 
 export const useKanbanStore = defineStore('kanban', () => {
@@ -196,11 +195,13 @@ export const useKanbanStore = defineStore('kanban', () => {
       }
 
       // 2. 调用API
-      const response = await moveTaskAPI(taskId, { newColumnId, newOrder })
-      
-      if (!response.success) {
-        throw new Error(response.message || '移动任务失败')
+      // 将 columnId 转换为 number 类型（后端需要）
+      const columnIdNumber = parseInt(newColumnId, 10)
+      if (isNaN(columnIdNumber)) {
+        throw new Error('无效的列ID')
       }
+      
+      await moveTaskAPI(taskId, { newColumnId: columnIdNumber, newOrder })
 
     } catch (error) {
       // 3. 如果API调用失败，回滚到原始状态
@@ -212,19 +213,8 @@ export const useKanbanStore = defineStore('kanban', () => {
 
   // 调用真实API移动任务
   const moveTaskAPI = async (taskId: string, request: MoveTaskRequest): Promise<MoveTaskResponse> => {
-    // taskId 会在 service 层自动合并到请求体中
-    const response = await taskApiService.moveTask(taskId, request)
-    
-    // 适配 API 响应格式
-    if (response.data) {
-      return response.data
-    }
-    
-    // 如果API调用失败，返回失败响应
-    return {
-      success: false,
-      message: response.msg || '移动任务失败'
-    }
+    // 直接调用 API，如果失败会抛出异常
+    return await taskApiService.moveTask(taskId, request)
   }
 
   const deleteTask = (taskId: string) => {
