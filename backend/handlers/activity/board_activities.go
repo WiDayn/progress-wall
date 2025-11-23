@@ -3,11 +3,12 @@ package activity
 import (
 	"math"
 	"net/http"
+	"strconv"
+
 	"progress-wall-backend/dto"
 	"progress-wall-backend/models"
 	"progress-wall-backend/repository"
 	"progress-wall-backend/services"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -29,7 +30,7 @@ func NewBoardActivitiesHandler(db *gorm.DB) *BoardActivitiesHandler {
 }
 
 // GetBoardActivities 获取看板活动日志
-// GET /api/boards/:board_id/activities
+// GET /api/boards/:boardId/activities
 func (h *BoardActivitiesHandler) GetBoardActivities(c *gin.Context) {
 	// 获取当前登录用户ID
 	userID := c.GetUint("user_id")
@@ -39,7 +40,7 @@ func (h *BoardActivitiesHandler) GetBoardActivities(c *gin.Context) {
 	}
 
 	// 获取看板ID
-	boardIDStr := c.Param("board_id")
+	boardIDStr := c.Param("boardId")
 	boardID, err := strconv.ParseUint(boardIDStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的看板ID"})
