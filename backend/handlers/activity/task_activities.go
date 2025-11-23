@@ -3,10 +3,11 @@ package activity
 import (
 	"math"
 	"net/http"
+	"strconv"
+
 	"progress-wall-backend/dto"
 	"progress-wall-backend/repository"
 	"progress-wall-backend/services"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -28,7 +29,7 @@ func NewTaskActivitiesHandler(db *gorm.DB) *TaskActivitiesHandler {
 }
 
 // GetTaskActivities 获取任务活动日志
-// GET /api/tasks/:task_id/activities
+// GET /api/tasks/:taskId/activities
 func (h *TaskActivitiesHandler) GetTaskActivities(c *gin.Context) {
 	// 获取当前登录用户ID
 	userID := c.GetUint("user_id")
@@ -38,7 +39,7 @@ func (h *TaskActivitiesHandler) GetTaskActivities(c *gin.Context) {
 	}
 
 	// 获取任务ID
-	taskIDStr := c.Param("task_id")
+	taskIDStr := c.Param("taskId")
 	taskID, err := strconv.ParseUint(taskIDStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的任务ID"})

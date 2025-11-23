@@ -83,10 +83,10 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.DELETE("/tasks/:taskId", taskHandler.DeleteTask)
 		protected.PATCH("/tasks/:taskId/move", taskHandler.MoveTask)
 		// 看板活动日志
-		protected.GET("/boards/:board_id/activities", boardActivitiesHandler.GetBoardActivities)
+		protected.GET("/boards/:boardId/activities", boardActivitiesHandler.GetBoardActivities)
 
 		// 任务活动日志
-		protected.GET("/tasks/:task_id/activities", taskActivitiesHandler.GetTaskActivities)
+		protected.GET("/tasks/:taskId/activities", taskActivitiesHandler.GetTaskActivities)
 	}
 
 	return r
