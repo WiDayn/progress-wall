@@ -8,6 +8,7 @@ import (
 	"progress-wall-backend/handlers/auth"
 	"progress-wall-backend/handlers/board"
 	"progress-wall-backend/handlers/column"
+	"progress-wall-backend/handlers/project"
 	"progress-wall-backend/handlers/task"
 	"progress-wall-backend/handlers/user"
 	"progress-wall-backend/middleware"
@@ -38,6 +39,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	loginHandler := auth.NewLoginHandler(db, cfg)
 	registerHandler := auth.NewRegisterHandler(db, cfg)
 	profileHandler := user.NewProfileHandler(db)
+	projectHandler := project.NewProjectHandler(db)
 	boardHandler := board.NewBoardHandler(db)
 	columnHandler := column.NewColumnHandler(db)
 	taskHandler := task.NewTaskHandler(db)
@@ -60,6 +62,13 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	{
 		// 用户相关
 		protected.GET("/user/profile", profileHandler.GetProfile)
+
+		// 项目相关
+		protected.GET("/projects", projectHandler.GetProjects)
+		protected.POST("/projects", projectHandler.CreateProject)
+		protected.GET("/projects/:projectId", projectHandler.GetProject)
+		protected.PUT("/projects/:projectId", projectHandler.UpdateProject)
+		protected.DELETE("/projects/:projectId", projectHandler.DeleteProject)
 
 		// 看板相关
 		protected.GET("/boards", boardHandler.GetBoards)
