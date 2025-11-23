@@ -12,6 +12,7 @@ var (
 	ErrUserExists         = errors.New("用户名或邮箱已存在")
 	ErrInvalidPassword    = errors.New("密码格式不正确")
 	ErrBoardNotFound      = errors.New("看板不存在")
+	ErrColumnNotFound     = errors.New("列不存在")
 	ErrTaskNotFound       = errors.New("任务不存在")
 	ErrAccessDenied       = errors.New("没有访问权限")
 )

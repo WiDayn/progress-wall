@@ -5,6 +5,7 @@ import (
 	"progress-wall-backend/config"
 	"progress-wall-backend/models"
 	"progress-wall-backend/services"
+	"progress-wall-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -40,6 +41,12 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		return
+	}
+
+	// 验证密码强度（在handler层提前验证，提供更友好的错误信息）
+	if err := utils.ValidatePasswordStrength(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
