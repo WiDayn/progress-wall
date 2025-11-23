@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"fmt"
+
 	"progress-wall-backend/models"
 
 	"gorm.io/gorm"
@@ -27,9 +29,8 @@ func (s *BoardService) GetBoardByID(boardID uint) (*models.Board, error) {
 			return db.Order("position ASC")
 		}).
 		Preload("Columns.Tasks", func(db *gorm.DB) *gorm.DB {
-			return db.Order("position ASC")
+			return db.Order("position ASC").Preload("Assignee")
 		}).
-		Preload("Columns.Tasks.Assignee").
 		Preload("Columns.Tasks.Creator").
 		Preload("Owner").
 		First(&board, boardID)
@@ -38,7 +39,7 @@ func (s *BoardService) GetBoardByID(boardID uint) (*models.Board, error) {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, ErrBoardNotFound
 		}
-		return nil, errors.New("查询看板失败")
+		return nil, fmt.Errorf("查询看板失败: %v", result.Error)
 	}
 
 	return &board, nil
@@ -62,7 +63,7 @@ func (s *BoardService) GetBoardsByUserID(userID uint) ([]models.Board, error) {
 // CreateBoard 创建看板
 func (s *BoardService) CreateBoard(board *models.Board) error {
 	if err := s.db.Create(board).Error; err != nil {
-		return errors.New("创建看板失败")
+		return fmt.Errorf("创建看板失败: %v", err)
 	}
 	return nil
 }
@@ -71,7 +72,7 @@ func (s *BoardService) CreateBoard(board *models.Board) error {
 func (s *BoardService) UpdateBoard(boardID uint, updates map[string]interface{}) error {
 	result := s.db.Model(&models.Board{}).Where("id = ?", boardID).Updates(updates)
 	if result.Error != nil {
-		return errors.New("更新看板失败")
+		return fmt.Errorf("更新看板失败: %v", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return ErrBoardNotFound
@@ -83,7 +84,7 @@ func (s *BoardService) UpdateBoard(boardID uint, updates map[string]interface{})
 func (s *BoardService) DeleteBoard(boardID uint) error {
 	result := s.db.Delete(&models.Board{}, boardID)
 	if result.Error != nil {
-		return errors.New("删除看板失败")
+		return fmt.Errorf("删除看板失败: %v", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return ErrBoardNotFound

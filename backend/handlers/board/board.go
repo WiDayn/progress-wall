@@ -69,23 +69,23 @@ func (h *BoardHandler) CreateBoard(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	var createBoardRequest struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
 		Color       string `json:"color"`
 		ProjectID   uint   `json:"project_id" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&createBoardRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
 		return
 	}
 
 	board := &models.Board{
-		Name:        req.Name,
-		Description: req.Description,
-		Color:       req.Color,
-		ProjectID:   req.ProjectID,
+		Name:        createBoardRequest.Name,
+		Description: createBoardRequest.Description,
+		Color:       createBoardRequest.Color,
+		ProjectID:   createBoardRequest.ProjectID,
 		OwnerID:     userID,
 		Status:      models.BoardStatusActive,
 	}
@@ -106,7 +106,7 @@ func (h *BoardHandler) UpdateBoard(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	var updateBoardRequest struct {
 		Name        *string             `json:"name"`
 		Description *string             `json:"description"`
 		Color       *string             `json:"color"`
@@ -114,26 +114,26 @@ func (h *BoardHandler) UpdateBoard(c *gin.Context) {
 		Position    *int                `json:"position"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&updateBoardRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
 		return
 	}
 
 	updates := make(map[string]interface{})
-	if req.Name != nil {
-		updates["name"] = *req.Name
+	if updateBoardRequest.Name != nil {
+		updates["name"] = *updateBoardRequest.Name
 	}
-	if req.Description != nil {
-		updates["description"] = *req.Description
+	if updateBoardRequest.Description != nil {
+		updates["description"] = *updateBoardRequest.Description
 	}
-	if req.Color != nil {
-		updates["color"] = *req.Color
+	if updateBoardRequest.Color != nil {
+		updates["color"] = *updateBoardRequest.Color
 	}
-	if req.Status != nil {
-		updates["status"] = *req.Status
+	if updateBoardRequest.Status != nil {
+		updates["status"] = *updateBoardRequest.Status
 	}
-	if req.Position != nil {
-		updates["position"] = *req.Position
+	if updateBoardRequest.Position != nil {
+		updates["position"] = *updateBoardRequest.Position
 	}
 
 	if err := h.boardService.UpdateBoard(uint(boardID), updates); err != nil {

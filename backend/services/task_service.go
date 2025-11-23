@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"progress-wall-backend/models"
 
 	"gorm.io/gorm"
@@ -65,7 +66,7 @@ func (s *TaskService) CreateTask(task *models.Task) error {
 	task.Position = maxPosition + 1
 
 	if err := s.db.Create(task).Error; err != nil {
-		return errors.New("创建任务失败")
+		return fmt.Errorf("创建任务失败: %v", err)
 	}
 	return nil
 }
@@ -74,7 +75,7 @@ func (s *TaskService) CreateTask(task *models.Task) error {
 func (s *TaskService) UpdateTask(taskID uint, updates map[string]interface{}) error {
 	result := s.db.Model(&models.Task{}).Where("id = ?", taskID).Updates(updates)
 	if result.Error != nil {
-		return errors.New("更新任务失败")
+		return fmt.Errorf("更新任务失败: %v", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return ErrTaskNotFound
@@ -86,7 +87,7 @@ func (s *TaskService) UpdateTask(taskID uint, updates map[string]interface{}) er
 func (s *TaskService) DeleteTask(taskID uint) error {
 	result := s.db.Delete(&models.Task{}, taskID)
 	if result.Error != nil {
-		return errors.New("删除任务失败")
+		return fmt.Errorf("删除任务失败: %v", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return ErrTaskNotFound
@@ -107,19 +108,23 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 	var task models.Task
 	if err := tx.First(&task, taskID).Error; err != nil {
 		tx.Rollback()
-		return ErrTaskNotFound
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrTaskNotFound
+		}
+		return fmt.Errorf("查询任务失败: %v", err)
 	}
 
 	oldColumnID := task.ColumnID
+	oldPosition := task.Position
 
 	// 如果移动到不同列，需要更新两个列中的任务位置
 	if oldColumnID != newColumnID {
 		// 从旧列中移除：将旧列中位置大于当前任务位置的所有任务位置减1
 		if err := tx.Model(&models.Task{}).
-			Where("column_id = ? AND position > ?", oldColumnID, task.Position).
+			Where("column_id = ? AND position > ?", oldColumnID, oldPosition).
 			Update("position", gorm.Expr("position - 1")).Error; err != nil {
 			tx.Rollback()
-			return errors.New("更新旧列任务位置失败")
+			return fmt.Errorf("更新旧列任务位置失败: %v", err)
 		}
 
 		// 在新列中插入：将新列中位置大于等于newOrder的所有任务位置加1
@@ -127,7 +132,7 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 			Where("column_id = ? AND position >= ?", newColumnID, newOrder).
 			Update("position", gorm.Expr("position + 1")).Error; err != nil {
 			tx.Rollback()
-			return errors.New("更新新列任务位置失败")
+			return fmt.Errorf("更新新列任务位置失败: %v", err)
 		}
 
 		// 更新任务的列ID和位置
@@ -137,18 +142,17 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 				"position":  newOrder,
 			}).Error; err != nil {
 			tx.Rollback()
-			return errors.New("更新任务位置失败")
+			return fmt.Errorf("更新任务位置失败: %v", err)
 		}
 	} else {
 		// 同一列内移动
-		oldPosition := task.Position
 		if oldPosition < newOrder {
 			// 向后移动：将位置在 (oldPosition, newOrder] 之间的任务位置减1
 			if err := tx.Model(&models.Task{}).
 				Where("column_id = ? AND position > ? AND position <= ?", newColumnID, oldPosition, newOrder).
 				Update("position", gorm.Expr("position - 1")).Error; err != nil {
 				tx.Rollback()
-				return errors.New("更新任务位置失败")
+				return fmt.Errorf("更新任务位置失败: %v", err)
 			}
 		} else if oldPosition > newOrder {
 			// 向前移动：将位置在 [newOrder, oldPosition) 之间的任务位置加1
@@ -156,16 +160,20 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 				Where("column_id = ? AND position >= ? AND position < ?", newColumnID, newOrder, oldPosition).
 				Update("position", gorm.Expr("position + 1")).Error; err != nil {
 				tx.Rollback()
-				return errors.New("更新任务位置失败")
+				return fmt.Errorf("更新任务位置失败: %v", err)
 			}
 		}
 
 		// 更新任务位置
 		if err := tx.Model(&task).Update("position", newOrder).Error; err != nil {
 			tx.Rollback()
-			return errors.New("更新任务位置失败")
+			return fmt.Errorf("更新任务位置失败: %v", err)
 		}
 	}
 
-	return tx.Commit().Error
+	// 提交事务并验证
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("提交事务失败: %v", err)
+	}
+	return nil
 }

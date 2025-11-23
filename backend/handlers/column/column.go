@@ -69,21 +69,21 @@ func (h *ColumnHandler) CreateColumn(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	var createColumnRequest struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
 		Color       string `json:"color"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&createColumnRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
 		return
 	}
 
 	column := &models.Column{
-		Name:        req.Name,
-		Description: req.Description,
-		Color:       req.Color,
+		Name:        createColumnRequest.Name,
+		Description: createColumnRequest.Description,
+		Color:       createColumnRequest.Color,
 		BoardID:     uint(boardID),
 		Status:      models.ColumnStatusActive,
 	}
@@ -104,7 +104,7 @@ func (h *ColumnHandler) UpdateColumn(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	var updateColumnRequest struct {
 		Name        *string              `json:"name"`
 		Description *string              `json:"description"`
 		Color       *string              `json:"color"`
@@ -112,26 +112,26 @@ func (h *ColumnHandler) UpdateColumn(c *gin.Context) {
 		Position    *int                 `json:"position"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&updateColumnRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
 		return
 	}
 
 	updates := make(map[string]interface{})
-	if req.Name != nil {
-		updates["name"] = *req.Name
+	if updateColumnRequest.Name != nil {
+		updates["name"] = *updateColumnRequest.Name
 	}
-	if req.Description != nil {
-		updates["description"] = *req.Description
+	if updateColumnRequest.Description != nil {
+		updates["description"] = *updateColumnRequest.Description
 	}
-	if req.Color != nil {
-		updates["color"] = *req.Color
+	if updateColumnRequest.Color != nil {
+		updates["color"] = *updateColumnRequest.Color
 	}
-	if req.Status != nil {
-		updates["status"] = *req.Status
+	if updateColumnRequest.Status != nil {
+		updates["status"] = *updateColumnRequest.Status
 	}
-	if req.Position != nil {
-		updates["position"] = *req.Position
+	if updateColumnRequest.Position != nil {
+		updates["position"] = *updateColumnRequest.Position
 	}
 
 	if err := h.columnService.UpdateColumn(uint(columnID), updates); err != nil {

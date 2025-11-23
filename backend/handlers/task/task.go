@@ -76,7 +76,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	var createTaskRequest struct {
 		Title          string               `json:"title" binding:"required"`
 		Description    string               `json:"description"`
 		Priority       *models.TaskPriority `json:"priority"`
@@ -87,28 +87,28 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		ProjectID      uint                 `json:"project_id" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&createTaskRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
 		return
 	}
 
 	priority := models.TaskPriorityMedium
-	if req.Priority != nil {
-		priority = *req.Priority
+	if createTaskRequest.Priority != nil {
+		priority = *createTaskRequest.Priority
 	}
 
 	task := &models.Task{
-		Title:          req.Title,
-		Description:    req.Description,
+		Title:          createTaskRequest.Title,
+		Description:    createTaskRequest.Description,
 		Priority:       priority,
 		Status:         models.TaskStatusTodo,
 		ColumnID:       uint(columnID),
 		CreatorID:      userID,
-		AssigneeID:     req.AssigneeID,
-		ProjectID:      req.ProjectID,
-		DueDate:        req.DueDate,
-		StartDate:      req.StartDate,
-		EstimatedHours: req.EstimatedHours,
+		AssigneeID:     createTaskRequest.AssigneeID,
+		ProjectID:      createTaskRequest.ProjectID,
+		DueDate:        createTaskRequest.DueDate,
+		StartDate:      createTaskRequest.StartDate,
+		EstimatedHours: createTaskRequest.EstimatedHours,
 	}
 
 	if err := h.taskService.CreateTask(task); err != nil {
@@ -127,7 +127,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	var updateTaskRequest struct {
 		Title          *string              `json:"title"`
 		Description    *string              `json:"description"`
 		Priority       *models.TaskPriority `json:"priority"`
@@ -140,41 +140,41 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		AssigneeID     *uint                `json:"assignee_id"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&updateTaskRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
 		return
 	}
 
 	updates := make(map[string]interface{})
-	if req.Title != nil {
-		updates["title"] = *req.Title
+	if updateTaskRequest.Title != nil {
+		updates["title"] = *updateTaskRequest.Title
 	}
-	if req.Description != nil {
-		updates["description"] = *req.Description
+	if updateTaskRequest.Description != nil {
+		updates["description"] = *updateTaskRequest.Description
 	}
-	if req.Priority != nil {
-		updates["priority"] = *req.Priority
+	if updateTaskRequest.Priority != nil {
+		updates["priority"] = *updateTaskRequest.Priority
 	}
-	if req.Status != nil {
-		updates["status"] = *req.Status
+	if updateTaskRequest.Status != nil {
+		updates["status"] = *updateTaskRequest.Status
 	}
-	if req.DueDate != nil {
-		updates["due_date"] = *req.DueDate
+	if updateTaskRequest.DueDate != nil {
+		updates["due_date"] = *updateTaskRequest.DueDate
 	}
-	if req.StartDate != nil {
-		updates["start_date"] = *req.StartDate
+	if updateTaskRequest.StartDate != nil {
+		updates["start_date"] = *updateTaskRequest.StartDate
 	}
-	if req.EndDate != nil {
-		updates["end_date"] = *req.EndDate
+	if updateTaskRequest.EndDate != nil {
+		updates["end_date"] = *updateTaskRequest.EndDate
 	}
-	if req.EstimatedHours != nil {
-		updates["estimated_hours"] = *req.EstimatedHours
+	if updateTaskRequest.EstimatedHours != nil {
+		updates["estimated_hours"] = *updateTaskRequest.EstimatedHours
 	}
-	if req.ActualHours != nil {
-		updates["actual_hours"] = *req.ActualHours
+	if updateTaskRequest.ActualHours != nil {
+		updates["actual_hours"] = *updateTaskRequest.ActualHours
 	}
-	if req.AssigneeID != nil {
-		updates["assignee_id"] = *req.AssigneeID
+	if updateTaskRequest.AssigneeID != nil {
+		updates["assignee_id"] = *updateTaskRequest.AssigneeID
 	}
 
 	if err := h.taskService.UpdateTask(uint(taskID), updates); err != nil {
@@ -217,17 +217,17 @@ func (h *TaskHandler) MoveTask(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	var moveTaskRequest struct {
 		NewColumnID uint `json:"newColumnId" binding:"required"`
 		NewOrder    int  `json:"newOrder" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&moveTaskRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误：需要 newColumnId 和 newOrder"})
 		return
 	}
 
-	if err := h.taskService.MoveTask(uint(taskID), req.NewColumnID, req.NewOrder); err != nil {
+	if err := h.taskService.MoveTask(uint(taskID), moveTaskRequest.NewColumnID, moveTaskRequest.NewOrder); err != nil {
 		if err == services.ErrTaskNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return

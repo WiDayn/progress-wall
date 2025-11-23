@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"progress-wall-backend/models"
 
 	"gorm.io/gorm"
@@ -64,7 +65,7 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 	column.Position = maxPosition + 1
 
 	if err := s.db.Create(column).Error; err != nil {
-		return errors.New("创建列失败")
+		return fmt.Errorf("创建列失败: %v", err)
 	}
 	return nil
 }
@@ -73,7 +74,7 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 func (s *ColumnService) UpdateColumn(columnID uint, updates map[string]interface{}) error {
 	result := s.db.Model(&models.Column{}).Where("id = ?", columnID).Updates(updates)
 	if result.Error != nil {
-		return errors.New("更新列失败")
+		return fmt.Errorf("更新列失败: %v", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return ErrColumnNotFound
@@ -85,7 +86,7 @@ func (s *ColumnService) UpdateColumn(columnID uint, updates map[string]interface
 func (s *ColumnService) DeleteColumn(columnID uint) error {
 	result := s.db.Delete(&models.Column{}, columnID)
 	if result.Error != nil {
-		return errors.New("删除列失败")
+		return fmt.Errorf("删除列失败: %v", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return ErrColumnNotFound
@@ -107,9 +108,12 @@ func (s *ColumnService) ReorderColumns(boardID uint, columnIDs []uint) error {
 			Where("id = ? AND board_id = ?", columnID, boardID).
 			Update("position", i).Error; err != nil {
 			tx.Rollback()
-			return errors.New("重新排序列失败")
+			return fmt.Errorf("重新排序列失败: %v", err)
 		}
 	}
 
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("提交事务失败: %v", err)
+	}
+	return nil
 }
