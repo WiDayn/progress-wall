@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"progress-wall-backend/config"
+	"progress-wall-backend/handlers/activity"
 	"progress-wall-backend/handlers/auth"
 	"progress-wall-backend/handlers/board"
 	"progress-wall-backend/handlers/column"
@@ -40,6 +41,8 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	boardHandler := board.NewBoardHandler(db)
 	columnHandler := column.NewColumnHandler(db)
 	taskHandler := task.NewTaskHandler(db)
+	boardActivitiesHandler := activity.NewBoardActivitiesHandler(db)
+	taskActivitiesHandler := activity.NewTaskActivitiesHandler(db)
 
 	// 公开路由（不需要认证）
 	api := r.Group("/api")
@@ -79,6 +82,11 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.PUT("/tasks/:taskId", taskHandler.UpdateTask)
 		protected.DELETE("/tasks/:taskId", taskHandler.DeleteTask)
 		protected.PATCH("/tasks/:taskId/move", taskHandler.MoveTask)
+		// 看板活动日志
+		protected.GET("/boards/:board_id/activities", boardActivitiesHandler.GetBoardActivities)
+
+		// 任务活动日志
+		protected.GET("/tasks/:task_id/activities", taskActivitiesHandler.GetTaskActivities)
 	}
 
 	return r
