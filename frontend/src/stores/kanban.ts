@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { taskApiService } from '@/services'
 
 export interface Task {
   id: string
@@ -16,6 +17,22 @@ export interface Column {
   title: string
   status: Task['status']
   tasks: Task[]
+}
+
+// API 响应类型
+export interface TaskDetailResponse {
+  success: boolean
+  data: Task
+  message?: string
+}
+
+export interface MoveTaskRequest {
+  newColumnId: number
+  newOrder: number
+}
+
+export interface MoveTaskResponse {
+  message: string
 }
 
 export const useKanbanStore = defineStore('kanban', () => {
@@ -131,6 +148,75 @@ export const useKanbanStore = defineStore('kanban', () => {
     }
   }
 
+  // 拖拽移动任务（乐观更新）
+  const moveTaskWithDrag = async (taskId: string, newColumnId: string, newOrder: number) => {
+    // 保存原始状态用于回滚
+    const originalColumns = JSON.parse(JSON.stringify(columns.value))
+    
+    try {
+      // 1. 乐观更新：立即更新本地状态
+      let taskToMove: Task | null = null
+      let sourceColumnIndex = -1
+      let sourceTaskIndex = -1
+
+      // 找到要移动的任务
+      for (let i = 0; i < columns.value.length; i++) {
+        const taskIndex = columns.value[i].tasks.findIndex(t => t.id === taskId)
+        if (taskIndex !== -1) {
+          taskToMove = columns.value[i].tasks[taskIndex]
+          sourceColumnIndex = i
+          sourceTaskIndex = taskIndex
+          break
+        }
+      }
+
+      if (!taskToMove) {
+        throw new Error('任务不存在')
+      }
+
+      // 从源列移除任务
+      columns.value[sourceColumnIndex].tasks.splice(sourceTaskIndex, 1)
+
+      // 找到目标列
+      const targetColumn = columns.value.find(col => col.id === newColumnId)
+      if (!targetColumn) {
+        throw new Error('目标列不存在')
+      }
+
+      // 更新任务状态
+      taskToMove.status = targetColumn.status
+      taskToMove.updatedAt = new Date()
+
+      // 插入到目标列的指定位置
+      if (newOrder >= targetColumn.tasks.length) {
+        targetColumn.tasks.push(taskToMove)
+      } else {
+        targetColumn.tasks.splice(newOrder, 0, taskToMove)
+      }
+
+      // 2. 调用API
+      // 将 columnId 转换为 number 类型（后端需要）
+      const columnIdNumber = parseInt(newColumnId, 10)
+      if (isNaN(columnIdNumber)) {
+        throw new Error('无效的列ID')
+      }
+      
+      await moveTaskAPI(taskId, { newColumnId: columnIdNumber, newOrder })
+
+    } catch (error) {
+      // 3. 如果API调用失败，回滚到原始状态
+      columns.value = originalColumns
+      console.error('Move task failed:', error)
+      throw error
+    }
+  }
+
+  // 调用真实API移动任务
+  const moveTaskAPI = async (taskId: string, request: MoveTaskRequest): Promise<MoveTaskResponse> => {
+    // 直接调用 API，如果失败会抛出异常
+    return await taskApiService.moveTask(taskId, request)
+  }
+
   const deleteTask = (taskId: string) => {
     for (const column of columns.value) {
       const taskIndex = column.tasks.findIndex(t => t.id === taskId)
@@ -141,11 +227,31 @@ export const useKanbanStore = defineStore('kanban', () => {
     }
   }
 
+
+  // 调用真实API获取任务详情
+  const fetchTaskDetail = async (taskId: string): Promise<TaskDetailResponse> => {
+    const response = await taskApiService.getTaskDetail(taskId)
+    
+    // 适配 API 响应格式
+    if (response.data) {
+      return response.data
+    }
+    
+    // 如果API调用失败，返回失败响应
+    return {
+      success: false,
+      data: {} as Task,
+      message: response.msg || '获取任务详情失败'
+    }
+  }
+
   return {
     columns,
     addTask,
     updateTask,
     moveTask,
-    deleteTask
+    moveTaskWithDrag,
+    deleteTask,
+    fetchTaskDetail
   }
 })

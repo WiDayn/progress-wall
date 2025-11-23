@@ -32,6 +32,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/tasks/:taskId',
+    name: 'TaskDetail',
+    component: () => import('@/views/dashboard/TaskDetailView.vue'),
+    props: true
+  },
+  {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/user/ProfileView.vue'),
