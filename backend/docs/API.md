@@ -115,9 +115,173 @@ Authorization: Bearer <accessToken>
 
 ---
 
+## 项目相关接口
+
+### 4. 获取用户的所有项目
+
+**GET** `/api/projects`
+
+**需要认证**: 是
+
+**响应** (200 OK):
+```json
+{
+  "projects": [
+    {
+      "id": 1,
+      "name": "我的项目",
+      "description": "项目描述",
+      "status": 1,
+      "start_date": "2025-11-20T10:00:00Z",
+      "end_date": null,
+      "owner_id": 1,
+      "created_at": "2025-11-20T10:00:00Z",
+      "updated_at": "2025-11-20T10:00:00Z",
+      "owner": {
+        "id": 1,
+        "username": "testuser",
+        "email": "test@example.com"
+      }
+    }
+  ]
+}
+```
+
+---
+
+### 5. 创建项目
+
+**POST** `/api/projects`
+
+**需要认证**: 是
+
+**请求体**:
+```json
+{
+  "name": "string (必填)",
+  "description": "string (可选)",
+  "status": "number (可选, 1=进行中, 2=已完成, 3=已暂停, 4=已取消, 默认1)",
+  "start_date": "string (可选, ISO 8601格式)",
+  "end_date": "string (可选, ISO 8601格式)"
+}
+```
+
+**响应** (201 Created):
+```json
+{
+  "id": 1,
+  "name": "我的项目",
+  "description": "项目描述",
+  "status": 1,
+  "start_date": "2025-11-20T10:00:00Z",
+  "end_date": null,
+  "owner_id": 1,
+  "created_at": "2025-11-20T10:00:00Z",
+  "updated_at": "2025-11-20T10:00:00Z"
+}
+```
+
+**错误响应**:
+- `400 Bad Request`: 请求参数错误
+- `401 Unauthorized`: 未认证或token无效
+
+---
+
+### 6. 获取单个项目
+
+**GET** `/api/projects/:projectId`
+
+**需要认证**: 是
+
+**路径参数**:
+- `projectId`: 项目ID (number)
+
+**响应** (200 OK):
+```json
+{
+  "id": 1,
+  "name": "我的项目",
+  "description": "项目描述",
+  "status": 1,
+  "start_date": "2025-11-20T10:00:00Z",
+  "end_date": null,
+  "owner_id": 1,
+  "created_at": "2025-11-20T10:00:00Z",
+  "updated_at": "2025-11-20T10:00:00Z",
+  "owner": {
+    "id": 1,
+    "username": "testuser",
+    "email": "test@example.com"
+  },
+  "boards": [],
+  "members": []
+}
+```
+
+**错误响应**:
+- `400 Bad Request`: 无效的项目ID
+- `404 Not Found`: 项目不存在
+
+---
+
+### 7. 更新项目
+
+**PUT** `/api/projects/:projectId`
+
+**需要认证**: 是
+
+**路径参数**:
+- `projectId`: 项目ID (number)
+
+**请求体** (所有字段可选):
+```json
+{
+  "name": "string (可选)",
+  "description": "string (可选)",
+  "status": "number (可选, 1=进行中, 2=已完成, 3=已暂停, 4=已取消)",
+  "start_date": "string (可选, ISO 8601格式)",
+  "end_date": "string (可选, ISO 8601格式)"
+}
+```
+
+**响应** (200 OK):
+```json
+{
+  "message": "更新成功"
+}
+```
+
+**错误响应**:
+- `400 Bad Request`: 请求参数错误
+- `404 Not Found`: 项目不存在
+
+---
+
+### 8. 删除项目
+
+**DELETE** `/api/projects/:projectId`
+
+**需要认证**: 是
+
+**路径参数**:
+- `projectId`: 项目ID (number)
+
+**响应** (200 OK):
+```json
+{
+  "message": "删除成功"
+}
+```
+
+**错误响应**:
+- `400 Bad Request`: 无效的项目ID
+- `404 Not Found`: 项目不存在
+
+---
+
 ## 看板相关接口
 
-### 4. 获取用户的所有看板
+### 9. 获取用户的所有看板
 
 **GET** `/api/boards`
 
@@ -145,7 +309,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 5. 创建看板
+### 10. 创建看板
 
 **POST** `/api/boards`
 
@@ -179,7 +343,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 6. 获取单个看板（包含嵌套的列和任务）
+### 11. 获取单个看板（包含嵌套的列和任务）
 
 **GET** `/api/boards/:boardId`
 
@@ -252,7 +416,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 7. 更新看板
+### 12. 更新看板
 
 **PUT** `/api/boards/:boardId`
 
@@ -285,7 +449,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 8. 删除看板
+### 13. 删除看板
 
 **DELETE** `/api/boards/:boardId`
 
@@ -309,7 +473,7 @@ Authorization: Bearer <accessToken>
 
 ## 列相关接口
 
-### 9. 获取看板的所有列
+### 14. 获取看板的所有列
 
 **GET** `/api/boards/:boardId/columns`
 
@@ -339,7 +503,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 10. 创建列
+### 15. 创建列
 
 **POST** `/api/boards/:boardId/columns`
 
@@ -376,7 +540,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 11. 获取单个列
+### 16. 获取单个列
 
 **GET** `/api/columns/:columnId`
 
@@ -418,7 +582,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 12. 更新列
+### 17. 更新列
 
 **PUT** `/api/columns/:columnId`
 
@@ -451,7 +615,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 13. 删除列
+### 18. 删除列
 
 **DELETE** `/api/columns/:columnId`
 
@@ -475,7 +639,7 @@ Authorization: Bearer <accessToken>
 
 ## 任务相关接口
 
-### 14. 获取列的所有任务
+### 19. 获取列的所有任务
 
 **GET** `/api/columns/:columnId/tasks`
 
@@ -513,7 +677,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 15. 创建任务
+### 20. 创建任务
 
 **POST** `/api/columns/:columnId/tasks`
 
@@ -561,7 +725,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 16. 获取单个任务
+### 21. 获取单个任务
 
 **GET** `/api/tasks/:taskId`
 
@@ -614,7 +778,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 17. 更新任务
+### 22. 更新任务
 
 **PUT** `/api/tasks/:taskId`
 
@@ -652,7 +816,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 18. 删除任务
+### 23. 删除任务
 
 **DELETE** `/api/tasks/:taskId`
 
@@ -674,7 +838,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-### 19. 移动任务（拖拽排序）
+### 24. 移动任务（拖拽排序）
 
 **PATCH** `/api/tasks/:taskId/move`
 
@@ -726,6 +890,20 @@ Authorization: Bearer <accessToken>
 ---
 
 ## 数据模型说明
+
+### Project (项目)
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | number | 项目ID |
+| name | string | 项目名称 |
+| description | string | 项目描述 |
+| status | number | 项目状态（1=进行中, 2=已完成, 3=已暂停, 4=已取消） |
+| start_date | string | 项目开始时间（ISO 8601格式） |
+| end_date | string | 项目结束时间（ISO 8601格式） |
+| owner_id | number | 所有者用户ID |
+| created_at | string | 创建时间 |
+| updated_at | string | 更新时间 |
 
 ### Board (看板)
 
@@ -840,4 +1018,5 @@ Authorization: Bearer <accessToken>
 ## 更新日志
 
 - **2025-11-20**: 初始版本，包含看板、列、任务的完整CRUD接口和拖拽排序功能
+- **2025-11-20**: 新增项目（Project）的完整CRUD接口
 

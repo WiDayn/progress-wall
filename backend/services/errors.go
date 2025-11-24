@@ -14,5 +14,6 @@ var (
 	ErrBoardNotFound      = errors.New("看板不存在")
 	ErrColumnNotFound     = errors.New("列不存在")
 	ErrTaskNotFound       = errors.New("任务不存在")
+	ErrProjectNotFound    = errors.New("项目不存在")
 	ErrAccessDenied       = errors.New("没有访问权限")
 )

@@ -8,10 +8,10 @@ import (
 	"progress-wall-backend/handlers/auth"
 	"progress-wall-backend/handlers/board"
 	"progress-wall-backend/handlers/column"
+	"progress-wall-backend/handlers/project"
 	"progress-wall-backend/handlers/task"
 	"progress-wall-backend/handlers/user"
 	"progress-wall-backend/handlers/team"
-	"progress-wall-backend/handlers/project"
 	"progress-wall-backend/middleware"
 	"progress-wall-backend/services"
 
@@ -44,11 +44,11 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	loginHandler := auth.NewLoginHandler(db, cfg)
 	registerHandler := auth.NewRegisterHandler(db, cfg)
 	profileHandler := user.NewProfileHandler(db)
+	projectHandler := project.NewProjectHandler(db)
 	boardHandler := board.NewBoardHandler(db)
 	columnHandler := column.NewColumnHandler(db)
 	taskHandler := task.NewTaskHandler(db)
 	teamHandler := team.NewTeamHandler(db)
-	projectHandler := project.NewProjectHandler(db)
 	boardActivitiesHandler := activity.NewBoardActivitiesHandler(db)
 	taskActivitiesHandler := activity.NewTaskActivitiesHandler(db)
 
@@ -90,6 +90,10 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			rbac.RequireTeamAccess("view", "teamId"),
 			projectHandler.GetTeamProjects,
 		)
+		protected.GET("/projects", projectHandler.GetProjects)
+		protected.GET("/projects/:projectId", projectHandler.GetProject)
+		protected.PUT("/projects/:projectId", projectHandler.UpdateProject)
+		protected.DELETE("/projects/:projectId", projectHandler.DeleteProject)
 
 		// 看板相关
 		protected.GET("/boards", boardHandler.GetBoards)
@@ -164,10 +168,10 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		)
 	
 		// 看板活动日志
-		protected.GET("/boards/:board_id/activities", boardActivitiesHandler.GetBoardActivities)
+		protected.GET("/boards/:boardId/activities", boardActivitiesHandler.GetBoardActivities)
 
 		// 任务活动日志
-		protected.GET("/tasks/:task_id/activities", taskActivitiesHandler.GetTaskActivities)
+		protected.GET("/tasks/:taskId/activities", taskActivitiesHandler.GetTaskActivities)
 	}
 
 	return r
