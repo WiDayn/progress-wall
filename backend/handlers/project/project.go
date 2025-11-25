@@ -62,11 +62,18 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"projects": projects})
 }
 
-// CreateProject 创建项目
+// POST /api/teams/:teamId/projects
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
-	userID := c.GetUint("user_id")
+	userID := c.GetUint("user_id")  // Set by AuthMiddleware
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "无法获取用户信息"})
+		return
+	}
+
+	teamIDStr := c.Param("teamId")
+	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)  // Should already validated by RBAC Middleware
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Team ID"})
 		return
 	}
 
@@ -95,6 +102,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		StartDate:   createProjectRequest.StartDate,
 		EndDate:     createProjectRequest.EndDate,
 		OwnerID:     userID,
+		TeamID:      uint(teamID),
 	}
 
 	if err := h.projectService.CreateProject(project); err != nil {
@@ -103,6 +111,21 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, project)
+}
+
+// Gets all projects for a specific team.
+// GET /api/teams/:teamId/projects
+func (h *ProjectHandler) GetTeamProjects(c *gin.Context) {
+	teamIDStr := c.Param("teamId")
+	teamID, _ := strconv.ParseUint(teamIDStr, 10, 32)  // Already validated by RBAC Middleware
+
+	projects, err := h.projectService.GetTeamProjects(uint(teamID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch projects: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"projects": projects})
 }
 
 // UpdateProject 更新项目
@@ -114,11 +137,11 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	}
 
 	var updateProjectRequest struct {
-		Name        *string            `json:"name"`
-		Description *string            `json:"description"`
+		Name        *string               `json:"name"`
+		Description *string               `json:"description"`
 		Status      *models.ProjectStatus `json:"status"`
-		StartDate   *time.Time         `json:"start_date"`
-		EndDate     *time.Time         `json:"end_date"`
+		StartDate   *time.Time            `json:"start_date"`
+		EndDate     *time.Time            `json:"end_date"`
 	}
 
 	if err := c.ShouldBindJSON(&updateProjectRequest); err != nil {
@@ -174,4 +197,3 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
 }
-

@@ -11,7 +11,9 @@ import (
 	"progress-wall-backend/handlers/project"
 	"progress-wall-backend/handlers/task"
 	"progress-wall-backend/handlers/user"
+	"progress-wall-backend/handlers/team"
 	"progress-wall-backend/middleware"
+	"progress-wall-backend/services"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -35,6 +37,9 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	corsConfig.AllowCredentials = true
 	r.Use(cors.New(corsConfig))
 
+	permService := services.NewPermissionService(db)
+	rbac := middleware.NewRBACMiddleware(permService, db)
+
 	// 初始化处理器
 	loginHandler := auth.NewLoginHandler(db, cfg)
 	registerHandler := auth.NewRegisterHandler(db, cfg)
@@ -43,6 +48,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	boardHandler := board.NewBoardHandler(db)
 	columnHandler := column.NewColumnHandler(db)
 	taskHandler := task.NewTaskHandler(db)
+	teamHandler := team.NewTeamHandler(db)
 	boardActivitiesHandler := activity.NewBoardActivitiesHandler(db)
 	taskActivitiesHandler := activity.NewTaskActivitiesHandler(db)
 
@@ -63,34 +69,104 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// 用户相关
 		protected.GET("/user/profile", profileHandler.GetProfile)
 
-		// 项目相关
+		// Team Routes
+		protected.POST("/teams", teamHandler.CreateTeam)
+		protected.GET("/teams", teamHandler.GetMyTeams)
+		protected.GET("/teams/:teamId/members",
+			rbac.RequireTeamAccess("view", "teamId"),
+			teamHandler.GetTeamMembers,
+		)
+		protected.POST("/teams/:teamId/members",
+			rbac.RequireTeamAccess("manage", "teamId"),
+			teamHandler.AddMember,
+		)
+
+		// Project Routes
+		protected.POST("/teams/:teamId/projects",
+			rbac.RequireTeamAccess("manage", "teamId"),
+			projectHandler.CreateProject,
+		)
+		protected.GET("/teams/:teamId/projects",
+			rbac.RequireTeamAccess("view", "teamId"),
+			projectHandler.GetTeamProjects,
+		)
 		protected.GET("/projects", projectHandler.GetProjects)
-		protected.POST("/projects", projectHandler.CreateProject)
 		protected.GET("/projects/:projectId", projectHandler.GetProject)
 		protected.PUT("/projects/:projectId", projectHandler.UpdateProject)
 		protected.DELETE("/projects/:projectId", projectHandler.DeleteProject)
 
 		// 看板相关
 		protected.GET("/boards", boardHandler.GetBoards)
-		protected.POST("/boards", boardHandler.CreateBoard)
-		protected.GET("/boards/:boardId", boardHandler.GetBoard)
-		protected.PUT("/boards/:boardId", boardHandler.UpdateBoard)
-		protected.DELETE("/boards/:boardId", boardHandler.DeleteBoard)
+		protected.GET("/projects/:projectId/boards", 
+			rbac.RequireProjectAccess("view", "projectId", "project"),
+			boardHandler.GetBoardsByProject,
+		)
+		protected.POST("/projects/:projectId/boards", 
+			rbac.RequireProjectAccess("manage", "projectId", "project"),
+			boardHandler.CreateBoard,
+		)
+		protected.GET("/boards/:boardId", 
+			rbac.RequireProjectAccess("view", "boardId", "board"),
+			boardHandler.GetBoard,
+		)
+		protected.PUT("/boards/:boardId", 
+			rbac.RequireProjectAccess("manage", "boardId", "board"),
+			boardHandler.UpdateBoard,
+		)
+		protected.DELETE("/boards/:boardId", 
+			rbac.RequireProjectAccess("manage", "boardId", "board"),
+			boardHandler.DeleteBoard,
+		)
 
 		// 列相关
-		protected.GET("/boards/:boardId/columns", columnHandler.GetColumns)
-		protected.POST("/boards/:boardId/columns", columnHandler.CreateColumn)
-		protected.GET("/columns/:columnId", columnHandler.GetColumn)
-		protected.PUT("/columns/:columnId", columnHandler.UpdateColumn)
-		protected.DELETE("/columns/:columnId", columnHandler.DeleteColumn)
+		protected.GET("/boards/:boardId/columns",
+			rbac.RequireProjectAccess("view", "boardId", "board"),
+			columnHandler.GetColumns,
+		)
+		protected.POST("/boards/:boardId/columns", 
+			// Only admins can create columns
+			rbac.RequireProjectAccess("manage", "boardId", "board"),
+			columnHandler.CreateColumn,
+		)
+		protected.GET("/columns/:columnId",
+			rbac.RequireProjectAccess("view", "columnId", "column"),
+			columnHandler.GetColumn,
+		)
+		protected.PUT("/columns/:columnId",
+			rbac.RequireProjectAccess("manage", "columnId", "column"),
+			columnHandler.UpdateColumn,
+		)
+		protected.DELETE("/columns/:columnId",
+			rbac.RequireProjectAccess("manage", "columnId", "column"),
+			columnHandler.DeleteColumn,
+		)
 
 		// 任务相关
-		protected.GET("/columns/:columnId/tasks", taskHandler.GetTasks)
-		protected.POST("/columns/:columnId/tasks", taskHandler.CreateTask)
-		protected.GET("/tasks/:taskId", taskHandler.GetTask)
-		protected.PUT("/tasks/:taskId", taskHandler.UpdateTask)
-		protected.DELETE("/tasks/:taskId", taskHandler.DeleteTask)
-		protected.PATCH("/tasks/:taskId/move", taskHandler.MoveTask)
+		protected.GET("/columns/:columnId/tasks",
+			rbac.RequireProjectAccess("view", "columnId", "column"),
+			taskHandler.GetTasks,
+		)
+		protected.POST("/columns/:columnId/tasks",
+			rbac.RequireProjectAccess("view", "columnId", "column"),
+			taskHandler.CreateTask,
+		)
+		protected.GET("/tasks/:taskId", 
+			rbac.RequireProjectAccess("view", "taskId", "task"),
+			taskHandler.GetTask,
+		)
+		protected.PUT("/tasks/:taskId",
+			rbac.RequireProjectAccess("view", "taskId", "task"),
+			taskHandler.UpdateTask,
+		)
+		protected.DELETE("/tasks/:taskId", 
+			rbac.RequireProjectAccess("view", "taskId", "task"),
+			taskHandler.DeleteTask,
+		)
+		protected.PATCH("/tasks/:taskId/move",
+			rbac.RequireProjectAccess("view", "taskId", "task"),
+			taskHandler.MoveTask,
+		)
+	
 		// 看板活动日志
 		protected.GET("/boards/:boardId/activities", boardActivitiesHandler.GetBoardActivities)
 

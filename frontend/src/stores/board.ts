@@ -60,12 +60,12 @@ export const useBoardStore = defineStore('board', () => {
    * 创建看板
    * 使用统一的数据转换函数，提高代码复用性
    */
-  const addBoard = async (board: Omit<Board, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addBoard = async (board: Omit<Board, 'id' | 'createdAt' | 'updatedAt'>, projectId: string) => {
     loading.value = true
     error.value = null
     
     try {
-      const response = await boardApiService.createKanban(board)
+      const response = await boardApiService.createKanban(board, projectId)
       
       if (response.data) {
         const newBoard = transformBoardData(response.data)

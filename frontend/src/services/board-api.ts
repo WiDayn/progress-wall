@@ -104,9 +104,9 @@ export class BoardApiService {
   }
 
   // 创建看板
-  async createKanban(board: Omit<Board, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Board>> {
+  async createKanban(board: Omit<Board, 'id' | 'createdAt' | 'updatedAt'>, projectId: string): Promise<ApiResponse<Board>> {
     try {
-      const response = await api.post('/boards', board)
+      const response = await api.post(`/projects/${projectId}/boards`, board)
       return response.data
     } catch (error: any) {
       return {

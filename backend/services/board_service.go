@@ -60,6 +60,22 @@ func (s *BoardService) GetBoardsByUserID(userID uint) ([]models.Board, error) {
 	return boards, nil
 }
 
+// GetBoardsByProjectID 获取项目的所有看板
+func (s *BoardService) GetBoardsByProjectID(projectID uint) ([]models.Board, error) {
+	var boards []models.Board
+	err := s.db.
+		Where("project_id = ?", projectID).
+		Order("position ASC").
+		Preload("Columns").
+		Find(&boards).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("查询项目看板失败: %v", err)
+	}
+
+	return boards, nil
+}
+
 // CreateBoard 创建看板
 func (s *BoardService) CreateBoard(board *models.Board) error {
 	if err := s.db.Create(board).Error; err != nil {

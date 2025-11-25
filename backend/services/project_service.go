@@ -56,12 +56,49 @@ func (s *ProjectService) GetProjectsByUserID(userID uint) ([]models.Project, err
 	return projects, nil
 }
 
-// CreateProject 创建项目
+// Creates a new project under a team and assigns the creator as ProjectAdmin.
 func (s *ProjectService) CreateProject(project *models.Project) error {
-	if err := s.db.Create(project).Error; err != nil {
-		return fmt.Errorf("创建项目失败: %v", err)
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Error; err != nil {
+		return err
 	}
+
+	if err := tx.Create(project).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Assign the creator as ProjectAdmin in ProjectMember table
+	member := &models.ProjectMember{
+		ProjectID: project.ID,
+		UserID:    project.OwnerID,
+		Role:      models.ProjectRoleAdmin, // Important: Creator gets Admin privileges
+	}
+
+	if err := tx.Create(member).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// Gets all projects for a specific team.
+func (s *ProjectService) GetTeamProjects(teamID uint) ([]models.Project, error) {
+	var projects []models.Project
+	err := s.db.Where("team_id = ?", teamID).Find(&projects).Error
+	return projects, err
 }
 
 // UpdateProject 更新项目

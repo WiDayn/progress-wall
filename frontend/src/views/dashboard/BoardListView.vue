@@ -142,7 +142,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useBoardStore } from '@/stores/board'
 import type { Board } from '@/stores/board'
 import Button from '@/components/ui/Button.vue'
@@ -150,8 +150,10 @@ import BoardCard from '@/components/features/BoardCard.vue'
 import CreateBoardDialog from '@/components/features/CreateBoardDialog.vue'
 
 const router = useRouter()
+const route = useRoute()
 const boardStore = useBoardStore()
 
+const projectId = route.params.projectId as string
 const showCreateDialog = ref(false)
 const viewMode = ref<'card' | 'list'>('card')
 
@@ -180,7 +182,12 @@ const deleteBoard = async (board: Board) => {
 }
 
 const createBoard = async (data: { name: string; description: string; color: string }) => {
-  const result = await boardStore.addBoard(data)
+  if (!projectId) {
+    alert('无法获取项目ID，请重新进入项目')
+    return
+  }
+
+  const result = await boardStore.addBoard(data, projectId)
   
   if (result) {
     showCreateDialog.value = false

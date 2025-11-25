@@ -18,7 +18,7 @@ type BoardHandler struct {
 
 // NewBoardHandler 创建看板处理器
 func NewBoardHandler(db *gorm.DB) *BoardHandler {
-	return &BoardHandler{
+	return &BoardHandler {
 		boardService: services.NewBoardService(db),
 	}
 }
@@ -61,6 +61,24 @@ func (h *BoardHandler) GetBoards(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"boards": boards})
 }
 
+// GET /api/projects/:projectId/boards
+func (h *BoardHandler) GetBoardsByProject(c *gin.Context) {
+	projectIDStr := c.Param("projectId")
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Project ID"})
+		return
+	}
+
+	boards, err := h.boardService.GetBoardsByProjectID(uint(projectID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"boards": boards})
+}
+
 // CreateBoard 创建看板
 func (h *BoardHandler) CreateBoard(c *gin.Context) {
 	userID := c.GetUint("user_id")
@@ -69,11 +87,18 @@ func (h *BoardHandler) CreateBoard(c *gin.Context) {
 		return
 	}
 
+	projectIDStr := c.Param("projectId")
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Project ID"})
+		return
+	}
+
 	var createBoardRequest struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
 		Color       string `json:"color"`
-		ProjectID   uint   `json:"project_id" binding:"required"`
+		// ProjectID   uint   `json:"project_id" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&createBoardRequest); err != nil {
@@ -85,7 +110,7 @@ func (h *BoardHandler) CreateBoard(c *gin.Context) {
 		Name:        createBoardRequest.Name,
 		Description: createBoardRequest.Description,
 		Color:       createBoardRequest.Color,
-		ProjectID:   createBoardRequest.ProjectID,
+		ProjectID:   uint(projectID),
 		OwnerID:     userID,
 		Status:      models.BoardStatusActive,
 	}

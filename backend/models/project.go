@@ -16,12 +16,14 @@ type Project struct {
 	StartDate   *time.Time     `json:"start_date" comment:"项目开始时间，可为空"`
 	EndDate     *time.Time     `json:"end_date" comment:"项目结束时间，可为空"`
 	OwnerID     uint           `json:"owner_id" gorm:"not null;index" comment:"项目所有者用户ID，必填，建立索引"`
+	TeamID      uint           `json:"team_id" gorm:"not null;index"` // The team this project belongs to
 	CreatedAt   time.Time      `json:"created_at" comment:"创建时间"`
 	UpdatedAt   time.Time      `json:"updated_at" comment:"更新时间"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index" comment:"软删除时间，用于软删除标记"`
 
 	// 关联关系
-	Owner   User    `json:"owner,omitempty" gorm:"foreignKey:OwnerID" comment:"项目所有者，必须有项目根权限*.project.project_id.*"`
+	Owner   User    `json:"owner,omitempty" gorm:"foreignKey:OwnerID" comment:"项目所有者，必须有项目根权限"`
+	Team    *Team   `json:"team,omitempty" gorm:"foreignKey:TeamID"`
 	Boards  []Board `json:"boards,omitempty" gorm:"foreignKey:ProjectID"`
 	Members []User  `json:"members,omitempty" gorm:"many2many:project_members"`
 }
@@ -32,7 +34,7 @@ type ProjectMember struct {
 	ID                uint           `json:"id" gorm:"primaryKey;autoIncrement" comment:"关联记录唯一标识符，自增主键"`
 	ProjectID         uint           `json:"project_id" gorm:"not null;index" comment:"项目ID，必填，建立索引"`
 	UserID            uint           `json:"user_id" gorm:"not null;index" comment:"用户ID，必填，建立索引"`
-	ProjectPermission string         `json:"project_permission" gorm:"type:text;comment:'项目权限，如*.project.project_id.*'" comment:"项目权限字符串，如*.project.project_id.*"`
+	Role              ProjectRole    `json:"role" gorm:"type:tinyint;default:1;comment:'Project role: 1=member, 2=admin'" comment:"项目角色，1=成员，2=管理员"`
 	JoinedAt          time.Time      `json:"joined_at" comment:"加入项目时间"`
 	CreatedAt         time.Time      `json:"created_at" comment:"创建时间"`
 	UpdatedAt         time.Time      `json:"updated_at" comment:"更新时间"`
@@ -59,4 +61,11 @@ type ProjectVisibility int
 const (
 	ProjectVisibilityPublic  ProjectVisibility = 1 // 公开
 	ProjectVisibilityPrivate ProjectVisibility = 2 // 私有
+)
+
+type ProjectRole int
+
+const (
+	ProjectRoleMember ProjectRole = 1
+	ProjectRoleAdmin ProjectRole = 2
 )
