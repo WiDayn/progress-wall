@@ -1,11 +1,20 @@
 <template>
   <div class="min-h-screen bg-background">
     <div class="container mx-auto px-4 py-8">
+      <!-- 面包屑导航 -->
+      <div class="flex items-center gap-2 text-sm text-muted-foreground mb-6" v-if="project">
+        <router-link to="/teams" class="hover:text-primary">My Teams</router-link>
+        <span>/</span>
+        <router-link :to="`/teams/${project.team_id}/projects`" class="hover:text-primary">{{ project.team?.name || 'Team' }}</router-link>
+        <span>/</span>
+        <span class="text-foreground font-medium">{{ project.name }}</span>
+      </div>
+
       <!-- 页面头部 -->
       <div class="flex justify-between items-center mb-8">
         <div>
-          <h1 class="text-3xl font-bold text-foreground">我的看板</h1>
-          <p class="text-muted-foreground mt-2">管理和组织您的项目看板</p>
+          <h1 class="text-3xl font-bold text-foreground">{{ project ? project.name : '我的看板' }}</h1>
+          <p class="text-muted-foreground mt-2">{{ project ? project.description : '管理和组织您的项目看板' }}</p>
         </div>
         <div class="flex items-center space-x-4">
           <!-- 视图模式切换 -->
@@ -68,7 +77,7 @@
         </div>
         <h3 class="text-lg font-semibold text-foreground mb-2">加载失败</h3>
         <p class="text-muted-foreground mb-4">{{ boardStore.error }}</p>
-        <Button @click="boardStore.fetchBoards()">
+        <Button @click="boardStore.fetchBoards(projectId)">
           重试
         </Button>
       </div>
@@ -145,6 +154,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useBoardStore } from '@/stores/board'
 import type { Board } from '@/stores/board'
+import api from '@/lib/api'
 import Button from '@/components/ui/Button.vue'
 import BoardCard from '@/components/features/BoardCard.vue'
 import CreateBoardDialog from '@/components/features/CreateBoardDialog.vue'
@@ -156,10 +166,23 @@ const boardStore = useBoardStore()
 const projectId = route.params.projectId as string
 const showCreateDialog = ref(false)
 const viewMode = ref<'card' | 'list'>('card')
+const project = ref<any>(null)
 
-// 组件挂载时获取看板列表
+// 组件挂载时获取看板列表和项目详情
 onMounted(async () => {
-  await boardStore.fetchBoards()
+  if (projectId) {
+    // Fetch project details for breadcrumbs
+    try {
+      const res = await api.get(`/projects/${projectId}`)
+      project.value = res.data
+    } catch (err) {
+      console.error("Failed to fetch project details", err)
+    }
+    
+    await boardStore.fetchBoards(projectId)
+  } else {
+    await boardStore.fetchBoards()
+  }
 })
 
 const openBoard = (board: Board) => {

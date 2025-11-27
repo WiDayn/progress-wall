@@ -45,7 +45,7 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 	c.JSON(http.StatusOK, project)
 }
 
-// GetProjects 获取用户的所有项目
+// GetProjects 获取用户的所有项目 (Deprecated or kept for "All Projects" view)
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if userID == 0 {
@@ -62,16 +62,17 @@ func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"projects": projects})
 }
 
+// CreateProject 创建项目
 // POST /api/teams/:teamId/projects
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
-	userID := c.GetUint("user_id")  // Set by AuthMiddleware
+	userID := c.GetUint("user_id")
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "无法获取用户信息"})
 		return
 	}
 
 	teamIDStr := c.Param("teamId")
-	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)  // Should already validated by RBAC Middleware
+	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Team ID"})
 		return
@@ -113,11 +114,15 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	c.JSON(http.StatusCreated, project)
 }
 
-// Gets all projects for a specific team.
+// GetTeamProjects Gets all projects for a specific team.
 // GET /api/teams/:teamId/projects
 func (h *ProjectHandler) GetTeamProjects(c *gin.Context) {
 	teamIDStr := c.Param("teamId")
-	teamID, _ := strconv.ParseUint(teamIDStr, 10, 32)  // Already validated by RBAC Middleware
+	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Team ID"})
+		return
+	}
 
 	projects, err := h.projectService.GetTeamProjects(uint(teamID))
 	if err != nil {

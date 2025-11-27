@@ -24,8 +24,8 @@ export const useBoardStore = defineStore('board', () => {
     return {
       ...apiBoard,
       id: String(apiBoard.id), // 确保 id 是字符串
-      createdAt: new Date(apiBoard.createdAt),
-      updatedAt: new Date(apiBoard.updatedAt)
+      createdAt: new Date(apiBoard.created_at || apiBoard.createdAt),
+      updatedAt: new Date(apiBoard.updated_at || apiBoard.updatedAt)
     }
   }
 
@@ -33,12 +33,14 @@ export const useBoardStore = defineStore('board', () => {
    * 从 API 获取看板列表
    * 优化数据处理，减少不必要的对象转换
    */
-  const fetchBoards = async () => {
+  const fetchBoards = async (projectId?: string) => {
     loading.value = true
     error.value = null
     
     try {
-      const response = await boardApiService.getKanbanList()
+      const response = projectId 
+        ? await boardApiService.getKanbanListByProject(projectId)
+        : await boardApiService.getKanbanList()
       
       // 验证响应数据
       if (response.data && Array.isArray(response.data)) {
@@ -67,8 +69,9 @@ export const useBoardStore = defineStore('board', () => {
     try {
       const response = await boardApiService.createKanban(board, projectId)
       
-      if (response.data) {
-        const newBoard = transformBoardData(response.data)
+      if (response.data || response.id) {
+        const boardData = response.data || response
+        const newBoard = transformBoardData(boardData)
         boards.value.push(newBoard)
         return newBoard
       } else {

@@ -72,6 +72,10 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		// Team Routes
 		protected.POST("/teams", teamHandler.CreateTeam)
 		protected.GET("/teams", teamHandler.GetMyTeams)
+		protected.GET("/teams/:teamId",
+			rbac.RequireTeamAccess("view", "teamId"),
+			teamHandler.GetTeam,
+		)
 		protected.GET("/teams/:teamId/members",
 			rbac.RequireTeamAccess("view", "teamId"),
 			teamHandler.GetTeamMembers,
