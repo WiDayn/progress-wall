@@ -513,7 +513,7 @@ Authorization: Bearer <accessToken>
 - `boardId`: 看板ID (number)
 
 **请求体**:
-```json
+```json 
 {
   "name": "string (必填)",
   "description": "string (可选)",
@@ -698,7 +698,7 @@ Authorization: Bearer <accessToken>
   "assignee_id": "number (可选)",
   "project_id": "number (必填)"
 }
-```
+``` 
 
 **响应** (201 Created):
 ```json

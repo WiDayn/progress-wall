@@ -8,24 +8,25 @@ import (
 
 // Task 任务表
 type Task struct {
-	ID             uint           `json:"id" gorm:"primaryKey;autoIncrement"`
-	Title          string         `json:"title" gorm:"size:200;not null"`
-	Description    string         `json:"description" gorm:"type:text"`
-	Priority       TaskPriority   `json:"priority" gorm:"type:tinyint;default:2;comment:'任务优先级:1=低,2=中,3=高,4=紧急'"`
-	Status         TaskStatus     `json:"status" gorm:"type:tinyint;default:1;comment:'任务状态:1=待办,2=进行中,3=已完成,4=已取消'"`
-	Position       int            `json:"position" gorm:"not null;comment:'任务在列中的排序位置'"`
-	DueDate        *time.Time     `json:"due_date"`
-	StartDate      *time.Time     `json:"start_date"`
-	EndDate        *time.Time     `json:"end_date"`
-	EstimatedHours *float64       `json:"estimated_hours" gorm:"type:decimal(8,2);comment:'预估工时(小时)'"`
-	ActualHours    *float64       `json:"actual_hours" gorm:"type:decimal(8,2);comment:'实际工时(小时)'"`
-	ColumnID       uint           `json:"column_id" gorm:"not null;index"`
-	CreatorID      uint           `json:"creator_id" gorm:"not null;index"`
-	AssigneeID     *uint          `json:"assignee_id" gorm:"index"`
-	ProjectID      uint           `json:"project_id" gorm:"not null;index"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
+	ID                uint           `json:"id" gorm:"primaryKey;autoIncrement"`
+	Title             string         `json:"title" gorm:"size:200;not null"`
+	Description       string         `json:"description" gorm:"type:text"`
+	Priority          TaskPriority   `json:"priority" gorm:"type:tinyint;default:2;comment:'任务优先级:1=低,2=中,3=高,4=紧急'"`
+	Status            TaskStatus     `json:"status" gorm:"type:tinyint;default:1;comment:'任务状态:1=待办,2=进行中,3=已完成,4=已取消,5=已归档'"`
+	Position          int            `json:"position" gorm:"not null;comment:'任务在列中的排序位置'"`
+	DueDate           *time.Time     `json:"due_date"`
+	StartDate         *time.Time     `json:"start_date"`
+	EndDate           *time.Time     `json:"end_date"`
+	EstimatedHours    *float64       `json:"estimated_hours" gorm:"type:decimal(8,2);comment:'预估工时(小时)'"`
+	ActualHours       *float64       `json:"actual_hours" gorm:"type:decimal(8,2);comment:'实际工时(小时)'"`
+	ColumnID          uint           `json:"column_id" gorm:"not null;index"`
+	CreatorID         uint           `json:"creator_id" gorm:"not null;index"`
+	AssigneeID        *uint          `json:"assignee_id" gorm:"index"`
+	ProjectID         uint           `json:"project_id" gorm:"not null;index"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index"`
+	DeadlineAlertSent int            `json:"deadline_alert_sent" gorm:"default:0;index;comment:'是否发送提醒:1=已发送,0=未发送'"` // 新增字段：是否已发送提醒
 
 	// 关联关系
 	Column      Column       `json:"column,omitempty" gorm:"foreignKey:ColumnID"`
@@ -51,8 +52,9 @@ const (
 type TaskStatus int
 
 const (
-	TaskStatusTodo       TaskStatus = 1 // 待办
-	TaskStatusInProgress TaskStatus = 2 // 进行中
-	TaskStatusCompleted  TaskStatus = 3 // 已完成
-	TaskStatusCancelled  TaskStatus = 4 // 已取消
+	TaskStatusTodo          TaskStatus = 1 // 待办
+	TaskStatusInProgress    TaskStatus = 2 // 进行中
+	TaskStatusCompleted     TaskStatus = 3 // 已完成
+	TaskStatusCancelled     TaskStatus = 4 // 已取消
+	TaskStatusAlreadyRemind TaskStatus = 5 // 已归档
 )
