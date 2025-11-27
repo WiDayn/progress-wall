@@ -20,6 +20,16 @@ export interface MoveTaskResponse {
   message: string
 }
 
+export interface CreateTaskRequest {
+  title: string
+  description: string
+  priority: number
+  column_id: number
+  project_id: number
+  status: number
+  position: number
+}
+
 // API 响应格式
 export interface ApiResponse<T> {
   msg: string
@@ -35,7 +45,10 @@ export class TaskApiService {
   async getTaskDetail(taskId: string): Promise<ApiResponse<TaskDetailResponse>> {
     try {
       const response = await api.get(`/tasks/${taskId}`)
-      return response.data
+      return {
+        msg: 'success',
+        data: response.data // 直接返回 task 对象
+      }
     } catch (error: any) {
       return {
         msg: error.response?.data?.msg || error.message || '获取任务详情失败',
@@ -43,8 +56,24 @@ export class TaskApiService {
           success: false,
           data: {} as Task,
           message: error.response?.data?.msg || error.message
-        }
+        } as unknown as TaskDetailResponse
       }
+    }
+  }
+
+  /**
+   * 创建任务
+   */
+  async createTask(columnId: string, request: CreateTaskRequest): Promise<ApiResponse<Task>> {
+    try {
+      const response = await api.post(`/columns/${columnId}/tasks`, request)
+      return {
+        msg: 'success',
+        data: response.data
+      }
+    } catch (error: any) {
+      console.error('创建任务失败:', error)
+      throw new Error(error.response?.data?.error || '创建任务失败')
     }
   }
 

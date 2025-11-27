@@ -1,155 +1,132 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { taskApiService } from '@/services'
+import { taskApiService, boardApiService, columnApiService } from '@/services'
+import type { Column as ApiColumn, Task as ApiTask } from '@/services/board-api'
+import type { CreateColumnRequest } from '@/services/column-api'
+import type { MoveTaskRequest, MoveTaskResponse, CreateTaskRequest } from '@/services/task-api'
 
-export interface Task {
-  id: string
-  title: string
-  description?: string
-  status: 'todo' | 'in-progress' | 'done'
-  priority: 'low' | 'medium' | 'high'
-  createdAt: Date
-  updatedAt: Date
+// 前端使用的 Task 类型 (基于 API 类型扩展或适配)
+export interface Task extends ApiTask {
+  // 可以添加前端特有的字段
 }
 
-export interface Column {
-  id: string
-  title: string
-  status: Task['status']
+// 前端使用的 Column 类型
+export interface Column extends ApiColumn {
   tasks: Task[]
 }
 
-// API 响应类型
+// 任务详情响应
 export interface TaskDetailResponse {
   success: boolean
   data: Task
   message?: string
 }
 
-export interface MoveTaskRequest {
-  newColumnId: number
-  newOrder: number
-}
-
-export interface MoveTaskResponse {
-  message: string
-}
-
 export const useKanbanStore = defineStore('kanban', () => {
-  const columns = ref<Column[]>([
-    {
-      id: 'todo',
-      title: '待办',
-      status: 'todo',
-      tasks: [
-        {
-          id: '1',
-          title: '设计用户界面',
-          description: '创建看板界面的设计稿',
-          status: 'todo',
-          priority: 'high',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: '2',
-          title: '设置项目环境',
-          description: '配置开发环境和依赖',
-          status: 'todo',
-          priority: 'medium',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ]
-    },
-    {
-      id: 'in-progress',
-      title: '进行中',
-      status: 'in-progress',
-      tasks: [
-        {
-          id: '3',
-          title: '实现拖拽功能',
-          description: '添加任务拖拽排序功能',
-          status: 'in-progress',
-          priority: 'high',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ]
-    },
-    {
-      id: 'done',
-      title: '已完成',
-      status: 'done',
-      tasks: [
-        {
-          id: '4',
-          title: '项目初始化',
-          description: '创建Vue项目并配置基础依赖',
-          status: 'done',
-          priority: 'low',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ]
-    }
-  ])
+  const columns = ref<Column[]>([])
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
+  const currentBoardId = ref<string | number | null>(null)
+  const currentProjectId = ref<number | null>(null)
 
-  const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
+  // 获取看板详情（包含列和任务）
+  const fetchBoardDetail = async (boardId: string | number) => {
+    isLoading.value = true
+    error.value = null
+    currentBoardId.value = boardId
     
-    const column = columns.value.find(col => col.status === task.status)
-    if (column) {
-      column.tasks.push(newTask)
+    try {
+      const boardDetail = await boardApiService.getKanbanDetail(boardId)
+      if (boardDetail) {
+        currentProjectId.value = boardDetail.project_id // 保存项目ID，创建任务时需要
+        // 确保 tasks 数组存在
+        columns.value = (boardDetail.columns || []).map(col => ({
+          ...col,
+          tasks: col.tasks || []
+        }))
+      } else {
+        columns.value = []
+        currentProjectId.value = null
+      }
+    } catch (err: any) {
+      console.error('Fetch board detail failed:', err)
+      error.value = err.message || '获取看板详情失败'
+      columns.value = []
+      currentProjectId.value = null
+    } finally {
+      isLoading.value = false
     }
   }
 
-  const updateTask = (taskId: string, updates: Partial<Task>) => {
+  // 创建新列
+  const createColumn = async (data: CreateColumnRequest) => {
+    if (!currentBoardId.value) return
+
+    try {
+      const response = await columnApiService.createColumn(Number(currentBoardId.value), data)
+      if (response) {
+        // 重新获取看板数据以保持同步（或者手动添加到 columns）
+        // 简单起见，如果返回了新列数据，手动添加
+        const newColumn: Column = {
+          ...response as unknown as ApiColumn, // 类型转换
+          tasks: []
+        }
+        columns.value.push(newColumn)
+      }
+    } catch (err: any) {
+      console.error('Create column failed:', err)
+      throw err
+    }
+  }
+
+  const addTask = (task: Task) => {
+    const column = columns.value.find(col => col.id === task.column_id)
+    if (column) {
+      column.tasks.push(task)
+    }
+  }
+
+  // 创建任务
+  const createTask = async (columnId: number, data: { title: string; description: string; priority: number }) => {
+    if (!currentProjectId.value) {
+      throw new Error('无法创建任务：缺少项目ID')
+    }
+
+    const request: CreateTaskRequest = {
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      column_id: columnId,
+      project_id: currentProjectId.value,
+      status: 1, // 默认待办
+      position: 0 // 默认位置
+    }
+
+    try {
+      const response = await taskApiService.createTask(columnId.toString(), request)
+      if (response.data) {
+        // 添加到本地状态
+        const newTask = response.data as unknown as Task
+        addTask(newTask)
+      }
+    } catch (err: any) {
+      console.error('Create task failed:', err)
+      throw err
+    }
+  }
+
+  const updateTask = (taskId: number, updates: Partial<Task>) => {
     for (const column of columns.value) {
       const task = column.tasks.find(t => t.id === taskId)
       if (task) {
-        Object.assign(task, updates, { updatedAt: new Date() })
+        Object.assign(task, updates, { updated_at: new Date().toISOString() })
         break
-      }
-    }
-  }
-
-  const moveTask = (taskId: string, newStatus: Task['status']) => {
-    let taskToMove: Task | null = null
-    let sourceColumn: Column | null = null
-
-    // 找到要移动的任务
-    for (const column of columns.value) {
-      const taskIndex = column.tasks.findIndex(t => t.id === taskId)
-      if (taskIndex !== -1) {
-        taskToMove = column.tasks[taskIndex] as Task
-        sourceColumn = column
-        column.tasks.splice(taskIndex, 1)
-        break
-      }
-    }
-
-    if (taskToMove && sourceColumn) {
-      // 更新任务状态
-      taskToMove.status = newStatus
-      taskToMove.updatedAt = new Date()
-
-      // 添加到目标列
-      const targetColumn = columns.value.find(col => col.status === newStatus)
-      if (targetColumn) {
-        targetColumn.tasks.push(taskToMove)
       }
     }
   }
 
   // 拖拽移动任务（乐观更新）
-  const moveTaskWithDrag = async (taskId: string, newColumnId: string, newOrder: number) => {
+  const moveTaskWithDrag = async (taskId: number, newColumnId: number, newOrder: number) => {
     // 保存原始状态用于回滚
     const originalColumns = JSON.parse(JSON.stringify(columns.value))
     
@@ -183,9 +160,9 @@ export const useKanbanStore = defineStore('kanban', () => {
         throw new Error('目标列不存在')
       }
 
-      // 更新任务状态
-      taskToMove.status = targetColumn.status
-      taskToMove.updatedAt = new Date()
+      // 更新任务列ID
+      taskToMove.column_id = newColumnId
+      // taskToMove.updated_at = new Date().toISOString()
 
       // 插入到目标列的指定位置
       if (newOrder >= targetColumn.tasks.length) {
@@ -195,29 +172,29 @@ export const useKanbanStore = defineStore('kanban', () => {
       }
 
       // 2. 调用API
-      // 将 columnId 转换为 number 类型（后端需要）
-      const columnIdNumber = parseInt(newColumnId, 10)
-      if (isNaN(columnIdNumber)) {
-        throw new Error('无效的列ID')
-      }
-      
-      await moveTaskAPI(taskId, { newColumnId: columnIdNumber, newOrder })
+      // 注意：这里不使用 await，让 API 在后台异步执行，从而避免 UI 阻塞
+      moveTaskAPI(taskId.toString(), { newColumnId: newColumnId, newOrder })
+        .catch(error => {
+          // 只有在 API 失败时才回滚
+          columns.value = originalColumns
+          console.error('Move task failed:', error)
+          // 可以添加一个全局提示，告诉用户同步失败
+        })
 
     } catch (error) {
-      // 3. 如果API调用失败，回滚到原始状态
+      // 如果是同步逻辑出错（比如找不到列），立即回滚
       columns.value = originalColumns
-      console.error('Move task failed:', error)
+      console.error('Move task local update failed:', error)
       throw error
     }
   }
 
   // 调用真实API移动任务
   const moveTaskAPI = async (taskId: string, request: MoveTaskRequest): Promise<MoveTaskResponse> => {
-    // 直接调用 API，如果失败会抛出异常
     return await taskApiService.moveTask(taskId, request)
   }
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = (taskId: number) => {
     for (const column of columns.value) {
       const taskIndex = column.tasks.findIndex(t => t.id === taskId)
       if (taskIndex !== -1) {
@@ -227,17 +204,17 @@ export const useKanbanStore = defineStore('kanban', () => {
     }
   }
 
-
   // 调用真实API获取任务详情
   const fetchTaskDetail = async (taskId: string): Promise<TaskDetailResponse> => {
     const response = await taskApiService.getTaskDetail(taskId)
     
-    // 适配 API 响应格式
     if (response.data) {
-      return response.data
+      return {
+        success: true,
+        data: response.data as unknown as Task
+      }
     }
     
-    // 如果API调用失败，返回失败响应
     return {
       success: false,
       data: {} as Task,
@@ -247,9 +224,14 @@ export const useKanbanStore = defineStore('kanban', () => {
 
   return {
     columns,
+    isLoading,
+    error,
+    currentBoardId,
+    fetchBoardDetail,
+    createColumn,
+    createTask,
     addTask,
     updateTask,
-    moveTask,
     moveTaskWithDrag,
     deleteTask,
     fetchTaskDetail
