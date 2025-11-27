@@ -20,6 +20,35 @@ export interface MoveTaskResponse {
   message: string
 }
 
+export interface CreateTaskRequest {
+  title: string
+  description: string
+  priority: number
+  column_id: number
+  project_id: number
+  status: number
+  position: number
+}
+
+export interface ActivityLog {
+  id: number
+  user_id: number
+  username: string
+  nickname?: string
+  avatar?: string
+  action_type: string
+  description: string
+  created_at: string
+}
+
+export interface ActivityLogListResponse {
+  data: ActivityLog[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
 // API 响应格式
 export interface ApiResponse<T> {
   msg: string
@@ -35,7 +64,10 @@ export class TaskApiService {
   async getTaskDetail(taskId: string): Promise<ApiResponse<TaskDetailResponse>> {
     try {
       const response = await api.get(`/tasks/${taskId}`)
-      return response.data
+      return {
+        msg: 'success',
+        data: response.data // 直接返回 task 对象
+      }
     } catch (error: any) {
       return {
         msg: error.response?.data?.msg || error.message || '获取任务详情失败',
@@ -43,8 +75,24 @@ export class TaskApiService {
           success: false,
           data: {} as Task,
           message: error.response?.data?.msg || error.message
-        }
+        } as unknown as TaskDetailResponse
       }
+    }
+  }
+
+  /**
+   * 创建任务
+   */
+  async createTask(columnId: string, request: CreateTaskRequest): Promise<ApiResponse<Task>> {
+    try {
+      const response = await api.post(`/columns/${columnId}/tasks`, request)
+      return {
+        msg: 'success',
+        data: response.data
+      }
+    } catch (error: any) {
+      console.error('创建任务失败:', error)
+      throw new Error(error.response?.data?.error || '创建任务失败')
     }
   }
 
@@ -75,6 +123,33 @@ export class TaskApiService {
       } else {
         throw new Error(error.response?.data?.message || error.message || '移动任务失败')
       }
+    }
+  }
+
+  /**
+   * 删除任务
+   */
+  async deleteTask(taskId: string | number): Promise<void> {
+    try {
+      await api.delete(`/tasks/${taskId}`)
+    } catch (error: any) {
+      console.error('删除任务失败:', error)
+      throw new Error(error.response?.data?.error || '删除任务失败')
+    }
+  }
+
+  /**
+   * 获取任务活动日志
+   */
+  async getTaskActivities(taskId: string | number, page = 1, pageSize = 20): Promise<ActivityLogListResponse> {
+    try {
+      const response = await api.get(`/tasks/${taskId}/activities`, {
+        params: { page, page_size: pageSize }
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('获取活动日志失败:', error)
+      throw new Error(error.response?.data?.error || '获取活动日志失败')
     }
   }
 }

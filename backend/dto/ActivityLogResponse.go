@@ -7,6 +7,8 @@ type ActivityLogResponse struct {
 	ID          uint      `json:"id"`
 	UserID      uint      `json:"user_id"`
 	Username    string    `json:"username"`
+	Nickname    string    `json:"nickname"`
+	Avatar      string    `json:"avatar"`
 	ActionType  string    `json:"action_type"`
 	EntityType  string    `json:"entity_type"`
 	EntityID    uint      `json:"entity_id"`

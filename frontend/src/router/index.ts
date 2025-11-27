@@ -7,7 +7,13 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/HomeView.vue')
+    redirect: (to) => {
+      const userStore = useUserStore()
+      if (userStore.isLoggedIn) {
+        return '/teams'
+      }
+      return '/login'
+    }
   },
   {
     path: '/login',
@@ -20,13 +26,25 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/user/RegisterView.vue')
   },
   {
-    path: '/boards',
-    name: 'Boards',
+    path: '/teams',
+    name: 'TeamList',
+    component: () => import('@/views/team/TeamListView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/teams/:teamId(\\d+)/projects',
+    name: 'ProjectList',
+    component: () => import('@/views/project/ProjectListView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/projects/:projectId(\\d+)/boards',
+    name: 'ProjectBoards',
     component: () => import('@/views/dashboard/BoardListView.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/kanban',
+    path: '/kanban/:boardId(\\d+)',
     name: 'Kanban',
     component: () => import('@/views/dashboard/KanbanView.vue'),
     meta: { requiresAuth: true }
@@ -71,7 +89,7 @@ router.beforeEach((to, from, next) => {
     })
   } else if (userStore.isLoggedIn && (to.path === '/login' || to.path === '/register')) {
     // 已登录用户访问登录/注册页，重定向到首页
-    next('/')
+    next('/teams')
   } else {
     next()
   }

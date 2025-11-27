@@ -9,19 +9,19 @@ import (
 	"gorm.io/gorm"
 )
 
-// ProjectService 项目服务
+// ProjectService provides methods for managing projects.
 type ProjectService struct {
 	db *gorm.DB
 }
 
-// NewProjectService 创建项目服务
+// NewProjectService creates a new instance of ProjectService.
 func NewProjectService(db *gorm.DB) *ProjectService {
 	return &ProjectService{
 		db: db,
 	}
 }
 
-// GetProjectByID 根据ID获取项目
+// GetProjectByID retrieves a project by its ID, including its owner, boards, and members.
 func (s *ProjectService) GetProjectByID(projectID uint) (*models.Project, error) {
 	var project models.Project
 	result := s.db.
@@ -40,7 +40,7 @@ func (s *ProjectService) GetProjectByID(projectID uint) (*models.Project, error)
 	return &project, nil
 }
 
-// GetProjectsByUserID 获取用户的所有项目
+// GetProjectsByUserID retrieves all projects owned by a specific user.
 func (s *ProjectService) GetProjectsByUserID(userID uint) ([]models.Project, error) {
 	var projects []models.Project
 	result := s.db.
@@ -56,15 +56,53 @@ func (s *ProjectService) GetProjectsByUserID(userID uint) ([]models.Project, err
 	return projects, nil
 }
 
-// CreateProject 创建项目
+// CreateProject creates a new project under a team and assigns the creator as ProjectAdmin.
+// It executes the creation and member assignment within a transaction.
 func (s *ProjectService) CreateProject(project *models.Project) error {
-	if err := s.db.Create(project).Error; err != nil {
-		return fmt.Errorf("创建项目失败: %v", err)
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Error; err != nil {
+		return err
 	}
+
+	if err := tx.Create(project).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Assign the creator as ProjectAdmin in ProjectMember table
+	member := &models.ProjectMember{
+		ProjectID: project.ID,
+		UserID:    project.OwnerID,
+		Role:      models.ProjectRoleAdmin, // Important: Creator gets Admin privileges
+	}
+
+	if err := tx.Create(member).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
 	return nil
 }
 
-// UpdateProject 更新项目
+// GetTeamProjects retrieves all projects associated with a specific team.
+func (s *ProjectService) GetTeamProjects(teamID uint) ([]models.Project, error) {
+	var projects []models.Project
+	err := s.db.Where("team_id = ?", teamID).Find(&projects).Error
+	return projects, err
+}
+
+// UpdateProject updates the fields of a project identified by projectID.
 func (s *ProjectService) UpdateProject(projectID uint, updates map[string]interface{}) error {
 	result := s.db.Model(&models.Project{}).Where("id = ?", projectID).Updates(updates)
 	if result.Error != nil {
@@ -76,7 +114,7 @@ func (s *ProjectService) UpdateProject(projectID uint, updates map[string]interf
 	return nil
 }
 
-// DeleteProject 删除项目（软删除）
+// DeleteProject soft-deletes a project by its ID.
 func (s *ProjectService) DeleteProject(projectID uint) error {
 	result := s.db.Delete(&models.Project{}, projectID)
 	if result.Error != nil {

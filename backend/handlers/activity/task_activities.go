@@ -84,6 +84,7 @@ func (h *TaskActivitiesHandler) GetTaskActivities(c *gin.Context) {
 	// 转换为响应格式
 	activities := make([]dto.ActivityLogResponse, len(logs))
 	for i, log := range logs {
+		// log.User.Nickname 和 log.User.Avatar 应该有值
 		activities[i] = convertToActivityLogResponse(log)
 	}
 
