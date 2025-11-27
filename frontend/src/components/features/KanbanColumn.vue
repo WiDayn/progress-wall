@@ -93,10 +93,23 @@ const onDragEnd = async (event: any) => {
   if (from !== to || newIndex !== oldIndex) {
     console.log('拖拽移动 - taskId:', taskId, 'to column:', targetColumnId, 'index:', newIndex)
     try {
+      // 在 store 中已经处理了 API 调用和乐观更新
+      // 如果 store 中的同步逻辑出错（比如找不到列），这里会捕获到异常
+      // 但异步的 API 错误会在 store 内部捕获并处理回滚，这里不需要 await
       await kanbanStore.moveTaskWithDrag(taskId, targetColumnId, newIndex)
     } catch (error) {
       console.error('拖拽移动任务失败:', error)
-      // 可以在这里添加 toast 提示
+      
+      // 如果是同步逻辑出错，手动回滚 UI（VueDraggable 会自动修改 v-model，需要撤销）
+      // 注意：VueDraggable 的 v-model 双向绑定已经修改了数据
+      // 如果 store 抛出错误，说明 store 的数据没有更新或者更新失败
+      // 但因为 v-model 是直接绑定到 column.tasks 的，VueDraggable 可能已经修改了数组
+      // 最简单的回滚方式是重新获取看板数据，或者利用 store 的回滚机制
+      
+      // 由于 store.moveTaskWithDrag 内部已经有 try-catch 处理同步错误并回滚
+      // 这里其实主要捕获的是 store 抛出的同步错误
+      // 我们可以选择刷新看板数据来确保一致性
+      // kanbanStore.fetchBoardDetail(kanbanStore.currentBoardId!)
     }
   }
 }
