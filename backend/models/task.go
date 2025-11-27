@@ -52,9 +52,9 @@ const (
 type TaskStatus int
 
 const (
-	TaskStatusTodo          TaskStatus = 1 // 待办
-	TaskStatusInProgress    TaskStatus = 2 // 进行中
-	TaskStatusCompleted     TaskStatus = 3 // 已完成
-	TaskStatusCancelled     TaskStatus = 4 // 已取消
-	TaskStatusAlreadyRemind TaskStatus = 5 // 已归档
+	TaskStatusTodo       TaskStatus = 1 // 待办
+	TaskStatusInProgress TaskStatus = 2 // 进行中
+	TaskStatusCompleted  TaskStatus = 3 // 已完成
+	TaskStatusCancelled  TaskStatus = 4 // 已取消
+	TaskStatusArchived   TaskStatus = 5 // 已归档
 )

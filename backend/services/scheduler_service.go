@@ -1,11 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"progress-wall-backend/models"
@@ -96,7 +96,7 @@ func (s *Scheduler) queryPendingTasks() ([]models.Task, error) {
 	return tasks, err
 }
 
-// sendNotification 调用B8通知服务发送提醒
+// sendNotification 调用通知服务发送提醒（带重试和超时机制）
 func (s *Scheduler) sendNotification(task models.Task) error {
 	// 构建通知 payload（按需求包含必要字段）
 	payload := struct {
@@ -111,24 +111,58 @@ func (s *Scheduler) sendNotification(task models.Task) error {
 		NotificationType: "TASK_DEADLINE_APPROACHING", // 固定通知类型
 	}
 
-	// 序列化payload为JSON
+	// 序列化 payload 为 JSON
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("序列化通知数据失败: %v", err)
 	}
 
-	// 调用通知服务API
-	resp, err := http.Post(
-		fmt.Sprintf("%s/api/notifications", s.notificationBaseURL),
-		"application/json",
-		strings.NewReader(string(jsonData)),
-	)
+	// 重试逻辑：最多重试 3 次，每次间隔递增（1s, 2s, 3s）
+	maxRetries := 3
+	for i := 0; i < maxRetries; i++ {
+		// 执行单次发送尝试
+		err := s.sendWithTimeout(jsonData)
+		if err == nil {
+			// 发送成功，直接返回
+			return nil
+		}
+
+		// 最后一次重试失败，返回错误
+		if i == maxRetries-1 {
+			return fmt.Errorf("通知发送失败，已重试 %d 次: %v", maxRetries, err)
+		}
+
+		// 非最后一次失败，等待后重试（间隔递增）
+		retryDelay := time.Duration(i+1) * time.Second
+		time.Sleep(retryDelay)
+	}
+
+	return nil
+}
+
+// sendWithTimeout 单次发送请求（带超时设置）
+func (s *Scheduler) sendWithTimeout(jsonData []byte) error {
+	// 创建带超时的 HTTP 客户端（超时时间 5 秒，可根据需求调整）
+	client := &http.Client{
+		Timeout: 5 * time.Second, // 关键：设置 HTTP 超时，避免请求无限阻塞
+	}
+
+	// 构建请求
+	url := fmt.Sprintf("%s/api/notifications", s.notificationBaseURL)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("创建请求失败: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// 发送请求
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("调用通知服务失败: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// 检查响应状态
+	// 检查响应状态码（200-299 为成功）
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("通知服务返回错误状态码: %d", resp.StatusCode)
 	}
