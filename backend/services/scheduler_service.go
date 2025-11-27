@@ -34,7 +34,7 @@ func (s *Scheduler) Start() *cron.Cron {
 	c := cron.New()
 
 	// 注册定时任务：每小时第0分钟执行（与需求中的"0 * * * *"一致）
-	_, err := c.AddFunc("* * * * *", s.Execute)
+	_, err := c.AddFunc("1 * * * *", s.Execute)
 	if err != nil {
 		log.Fatalf("注册定时任务失败: %v", err)
 	}
