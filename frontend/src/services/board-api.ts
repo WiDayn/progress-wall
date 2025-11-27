@@ -68,11 +68,28 @@ export class BoardApiService {
   // 获取看板列表
   async getKanbanList(): Promise<ApiResponse<KanbanListResponse>> {
     try {
-      const response = await api.get('/boards')
-      return response.data
+      const response = await api.get<{ boards: Board[] }>('/boards')
+      return {
+        data: response.data.boards
+      }
     } catch (error: any) {
       return {
         msg: error.response?.data?.msg || error.message || '获取看板列表失败',
+        data: []
+      }
+    }
+  }
+
+  // Get boards by project
+  async getKanbanListByProject(projectId: string): Promise<ApiResponse<KanbanListResponse>> {
+    try {
+      const response = await api.get<{ boards: Board[] }>(`/projects/${projectId}/boards`)
+      return {
+        data: response.data.boards
+      }
+    } catch (error: any) {
+      return {
+        msg: error.response?.data?.msg || error.message || 'Failed to fetch boards',
         data: []
       }
     }

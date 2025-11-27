@@ -2,6 +2,7 @@ package database
 
 import (
 	"log"
+
 	"progress-wall-backend/models"
 
 	"gorm.io/gorm"
@@ -13,8 +14,10 @@ func Migrate(db *gorm.DB) error {
 
 	// 迁移所有模型
 	err := db.AutoMigrate(
-		// 用户和权限相关
+		// 用户相关
 		&models.User{},
+
+		// 团队相关
 		&models.Team{},
 		&models.TeamMember{},
 
@@ -34,7 +37,6 @@ func Migrate(db *gorm.DB) error {
 		// 活动日志
 		&models.ActivityLog{},
 	)
-
 	if err != nil {
 		log.Printf("数据库迁移失败: %v", err)
 		return err

@@ -21,20 +21,20 @@ func NewTeamHandler(db *gorm.DB) *TeamHandler {
 	}
 }
 
-// POST /api/teams
+type CreateTeamRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+}
+
+// CreateTeam 创建团队
 func (h *TeamHandler) CreateTeam(c *gin.Context) {
-	userID := c.GetUint("user_id") // Get from AuthMiddleware
-
-	var req struct {
-		Name        string `json:"name" binding:"required"`
-		Description string `json:"description"`
-	}
-
+	var req CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parameters"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	userID := c.GetUint("user_id")
 	team, err := h.teamService.CreateTeam(req.Name, req.Description, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -44,67 +44,88 @@ func (h *TeamHandler) CreateTeam(c *gin.Context) {
 	c.JSON(http.StatusCreated, team)
 }
 
-// Gets all teams a user belongs to.
-// GET /api/teams
+// GetMyTeams 获取当前用户的团队列表
 func (h *TeamHandler) GetMyTeams(c *gin.Context) {
 	userID := c.GetUint("user_id")
-
 	teams, err := h.teamService.GetUserTeams(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch teams: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"teams": teams})
 }
 
-// POST /api/teams/:teamId/members
-func (h *TeamHandler) AddMember(c *gin.Context) {
+// GetTeam 获取单个团队详情
+func (h *TeamHandler) GetTeam(c *gin.Context) {
 	teamIDStr := c.Param("teamId")
 	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Team ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
-	// Who to add, and what role
-	var req struct {
-		UserID uint            `json:"user_id" binding:"required"`
-		Role   models.TeamRole `json:"role"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parameters"})
+	team, err := h.teamService.GetTeamByID(uint(teamID))
+	if err != nil {
+		if err == services.ErrTeamNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Team not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Default to Member if role is invalid
-	if req.Role != models.TeamRoleAdmin {
-		req.Role = models.TeamRoleMember
-	}
-
-	if err := h.teamService.AddMember(uint(teamID), req.UserID, req.Role); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Member added successfully"})
+	c.JSON(http.StatusOK, team)
 }
 
-// GET /api/teams/:teamId/members
+// GetTeamMembers 获取团队成员
 func (h *TeamHandler) GetTeamMembers(c *gin.Context) {
 	teamIDStr := c.Param("teamId")
 	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Team ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
 		return
 	}
 
-	members, err := h.teamService.GetTeamMembers(uint(teamID))
+	members, err := h.teamService.GetMembers(uint(teamID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch team members: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"members": members})
+}
+
+// AddMember 添加成员
+func (h *TeamHandler) AddMember(c *gin.Context) {
+	teamIDStr := c.Param("teamId")
+	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
+		return
+	}
+
+	var req struct {
+		UserID uint            `json:"user_id" binding:"required"`
+		Role   models.TeamRole `json:"role"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Role == 0 {
+		req.Role = models.TeamRoleMember // Default to member
+	}
+
+	if err := h.teamService.AddTeamMember(uint(teamID), req.UserID, req.Role); err != nil {
+		if err == services.ErrUserAlreadyMember {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Member added successfully"})
 }
