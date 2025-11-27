@@ -46,6 +46,9 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	r.Use(cors.New(corsConfig))
 
+	// 静态文件服务
+	r.Static("/uploads", "./uploads")
+
 	permService := services.NewPermissionService(db)
 	rbac := middleware.NewRBACMiddleware(permService, db)
 
@@ -77,6 +80,8 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	{
 		// 用户相关
 		protected.GET("/user/profile", profileHandler.GetProfile)
+		protected.PUT("/user/profile", profileHandler.UpdateProfile)
+		protected.POST("/user/avatar", profileHandler.UploadAvatar)
 
 		// Team Routes
 		protected.POST("/teams", teamHandler.CreateTeam)

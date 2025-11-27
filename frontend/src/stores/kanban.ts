@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { taskApiService, boardApiService, columnApiService } from '@/services'
 import type { Column as ApiColumn, Task as ApiTask } from '@/services/board-api'
 import type { CreateColumnRequest } from '@/services/column-api'
-import type { MoveTaskRequest, MoveTaskResponse, CreateTaskRequest } from '@/services/task-api'
+import type { MoveTaskRequest, MoveTaskResponse, CreateTaskRequest, ActivityLogListResponse } from '@/services/task-api'
 
 // 前端使用的 Task 类型 (基于 API 类型扩展或适配)
 export interface Task extends ApiTask {
@@ -194,13 +194,21 @@ export const useKanbanStore = defineStore('kanban', () => {
     return await taskApiService.moveTask(taskId, request)
   }
 
-  const deleteTask = (taskId: number) => {
-    for (const column of columns.value) {
-      const taskIndex = column.tasks.findIndex(t => t.id === taskId)
-      if (taskIndex !== -1) {
-        column.tasks.splice(taskIndex, 1)
-        break
+  const deleteTask = async (taskId: number) => {
+    try {
+      await taskApiService.deleteTask(taskId)
+      
+      // 本地删除
+      for (const column of columns.value) {
+        const taskIndex = column.tasks.findIndex(t => t.id === taskId)
+        if (taskIndex !== -1) {
+          column.tasks.splice(taskIndex, 1)
+          break
+        }
       }
+    } catch (err) {
+      console.error('Delete task failed:', err)
+      throw err
     }
   }
 
@@ -222,6 +230,11 @@ export const useKanbanStore = defineStore('kanban', () => {
     }
   }
 
+  // 获取任务活动日志
+  const fetchTaskActivities = async (taskId: string | number): Promise<ActivityLogListResponse> => {
+    return await taskApiService.getTaskActivities(taskId)
+  }
+
   return {
     columns,
     isLoading,
@@ -234,6 +247,7 @@ export const useKanbanStore = defineStore('kanban', () => {
     updateTask,
     moveTaskWithDrag,
     deleteTask,
-    fetchTaskDetail
+    fetchTaskDetail,
+    fetchTaskActivities
   }
 })

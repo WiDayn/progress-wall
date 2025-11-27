@@ -36,12 +36,12 @@
               <template #trigger>
                 <button class="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                   <Avatar
-                    :src="userStore.currentUser?.avatar"
-                    :fallback="userStore.currentUser?.name?.charAt(0) || 'U'"
+                    :src="getAvatarUrl(userStore.currentUser?.avatar)"
+                    :fallback="userStore.currentUser?.nickname?.charAt(0).toUpperCase() || userStore.currentUser?.username?.charAt(0).toUpperCase() || 'U'"
                     class="h-8 w-8"
                   />
                   <span class="hidden md:block text-gray-700 dark:text-gray-300">
-                    {{ userStore.currentUser?.name }}
+                    {{ userStore.currentUser?.nickname || userStore.currentUser?.username }}
                   </span>
                   <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -95,6 +95,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { getAvatarUrl } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'

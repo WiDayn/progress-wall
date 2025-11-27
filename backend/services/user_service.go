@@ -36,3 +36,12 @@ func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 
 	return &user, nil
 }
+
+// UpdateUser 更新用户信息
+func (s *UserService) UpdateUser(user *models.User) error {
+	result := s.db.Save(user)
+	if result.Error != nil {
+		return errors.New("更新用户失败")
+	}
+	return nil
+}

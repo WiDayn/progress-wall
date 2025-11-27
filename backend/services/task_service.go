@@ -96,7 +96,7 @@ func (s *TaskService) DeleteTask(taskID uint) error {
 }
 
 // MoveTask 移动任务到新列和新位置
-func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) error {
+func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, userID uint, username string) error {
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -106,7 +106,7 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 
 	// 获取任务
 	var task models.Task
-	if err := tx.First(&task, taskID).Error; err != nil {
+	if err := tx.Preload("Column").First(&task, taskID).Error; err != nil {
 		tx.Rollback()
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrTaskNotFound
@@ -114,8 +114,25 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 		return fmt.Errorf("查询任务失败: %v", err)
 	}
 
+	// 获取看板ID（通过Column）
+	var column models.Column
+	if err := tx.First(&column, task.ColumnID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("查询列失败: %v", err)
+	}
+	boardID := column.BoardID
+
 	oldColumnID := task.ColumnID
 	oldPosition := task.Position
+	oldColumnName := task.Column.Name
+
+	// 获取新列名称
+	var newColumn models.Column
+	if err := tx.First(&newColumn, newColumnID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("查询新列失败: %v", err)
+	}
+	newColumnName := newColumn.Name
 
 	// 如果移动到不同列，需要更新两个列中的任务位置
 	if oldColumnID != newColumnID {
@@ -136,7 +153,7 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 		}
 
 		// 更新任务的列ID和位置
-		if err := tx.Model(&task).
+		if err := tx.Model(&models.Task{}).Where("id = ?", task.ID).
 			Updates(map[string]interface{}{
 				"column_id": newColumnID,
 				"position":  newOrder,
@@ -144,6 +161,24 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 			tx.Rollback()
 			return fmt.Errorf("更新任务位置失败: %v", err)
 		}
+
+		// 记录跨列移动日志
+		log := models.ActivityLog{
+			UserID:      userID,
+			Username:    username,
+			ActionType:  models.ActionMove,
+			EntityType:  models.EntityTask,
+			EntityID:    task.ID,
+			BoardID:     &boardID,
+			TaskID:      &task.ID,
+			ProjectID:   &task.ProjectID,
+			Description: fmt.Sprintf("moved this task from \"%s\" to \"%s\"", oldColumnName, newColumnName),
+		}
+		if err := tx.Create(&log).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("创建活动日志失败: %v", err)
+		}
+
 	} else {
 		// 同一列内移动
 		if oldPosition < newOrder {
@@ -165,10 +200,12 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int) erro
 		}
 
 		// 更新任务位置
-		if err := tx.Model(&task).Update("position", newOrder).Error; err != nil {
+		if err := tx.Model(&models.Task{}).Where("id = ?", task.ID).Update("position", newOrder).Error; err != nil {
 			tx.Rollback()
 			return fmt.Errorf("更新任务位置失败: %v", err)
 		}
+		
+		// 同列移动不记录详细日志，或者记录简单的位置变更（可选，这里暂时不记录以免刷屏）
 	}
 
 	// 提交事务并验证
