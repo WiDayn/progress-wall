@@ -58,6 +58,13 @@
       @submit="handleCreateTask"
       @cancel="closeCreateTaskDialog"
     />
+
+    <!-- 任务详情模态框 -->
+    <TaskDetailModal
+      :is-open="isTaskDetailModalOpen"
+      :task-id="selectedTaskId"
+      @close="closeTaskDetailModal"
+    />
   </div>
 </template>
 
@@ -69,6 +76,7 @@ import Button from '@/components/ui/Button.vue'
 import KanbanColumn from '@/components/features/KanbanColumn.vue'
 import CreateColumnDialog from '@/components/features/CreateColumnDialog.vue'
 import CreateTaskDialog from '@/components/features/CreateTaskDialog.vue'
+import TaskDetailModal from '@/components/features/TaskDetailModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -86,6 +94,10 @@ const isCreating = ref(false)
 const isCreateTaskDialogOpen = ref(false)
 const isCreatingTask = ref(false)
 const currentColumnId = ref<number | undefined>(undefined)
+
+// 任务详情模态框状态
+const isTaskDetailModalOpen = ref(false)
+const selectedTaskId = ref<number | undefined>(undefined)
 
 const loadData = async () => {
   const boardId = route.params.boardId
@@ -107,7 +119,13 @@ const goBack = () => {
 }
 
 const selectTask = (task: any) => {
-  router.push(`/tasks/${task.id}`)
+  selectedTaskId.value = task.id
+  isTaskDetailModalOpen.value = true
+}
+
+const closeTaskDetailModal = () => {
+  isTaskDetailModalOpen.value = false
+  selectedTaskId.value = undefined
 }
 
 const deleteTask = (taskId: number) => {

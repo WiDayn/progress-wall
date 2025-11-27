@@ -227,7 +227,10 @@ func (h *TaskHandler) MoveTask(c *gin.Context) {
 		return
 	}
 
-	if err := h.taskService.MoveTask(uint(taskID), moveTaskRequest.NewColumnID, moveTaskRequest.NewOrder); err != nil {
+	userID := c.GetUint("user_id")
+	username := c.GetString("username") // 假设中间件中设置了username
+
+	if err := h.taskService.MoveTask(uint(taskID), moveTaskRequest.NewColumnID, moveTaskRequest.NewOrder, userID, username); err != nil {
 		if err == services.ErrTaskNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return

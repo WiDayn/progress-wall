@@ -85,6 +85,7 @@ func (h *BoardActivitiesHandler) GetBoardActivities(c *gin.Context) {
 	// 转换为响应格式
 	activities := make([]dto.ActivityLogResponse, len(logs))
 	for i, log := range logs {
+		// log.User.Nickname 和 log.User.Avatar 应该有值
 		activities[i] = convertToActivityLogResponse(log)
 	}
 
@@ -107,6 +108,8 @@ func convertToActivityLogResponse(log models.ActivityLog) dto.ActivityLogRespons
 		ID:          log.ID,
 		UserID:      log.UserID,
 		Username:    log.Username,
+		Nickname:    log.User.Nickname,
+		Avatar:      log.User.Avatar,
 		ActionType:  log.ActionType,
 		EntityType:  log.EntityType,
 		EntityID:    log.EntityID,

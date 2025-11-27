@@ -17,10 +17,6 @@
         </Button>
       </div>
       
-      <p v-if="task.description" class="text-xs text-muted-foreground line-clamp-2">
-        {{ task.description }}
-      </p>
-      
       <div class="flex justify-between items-center pt-1">
         <span
           :class="[
