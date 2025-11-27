@@ -89,8 +89,8 @@ func (s *TeamService) GetMembers(teamID uint) ([]models.TeamMember, error) {
 	return members, err
 }
 
-// AddMember 添加成员到团队
-func (s *TeamService) AddMember(teamID, userID uint, role models.TeamRole) error {
+// AddTeamMember 添加成员到团队
+func (s *TeamService) AddTeamMember(teamID, userID uint, role models.TeamRole) error {
 	// Check if already exists
 	var count int64
 	s.db.Model(&models.TeamMember{}).Where("team_id = ? AND user_id = ?", teamID, userID).Count(&count)

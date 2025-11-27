@@ -25,6 +25,7 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 }
 
 // GetProject 获取单个项目
+// GET /api/projects/:projectId
 func (h *ProjectHandler) GetProject(c *gin.Context) {
 	projectID, err := strconv.ParseUint(c.Param("projectId"), 10, 32)
 	if err != nil {
@@ -46,6 +47,7 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 }
 
 // GetProjects 获取用户的所有项目 (Deprecated or kept for "All Projects" view)
+// GET /api/projects
 func (h *ProjectHandler) GetProjects(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if userID == 0 {
@@ -79,16 +81,24 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	}
 
 	var createProjectRequest struct {
-		Name        string     `json:"name" binding:"required"`
-		Description string     `json:"description"`
+		Name        string     `json:"name" binding:"required,min=1,max=100"`
+		Description string     `json:"description" binding:"max=500"`
 		Status      *int       `json:"status"`
 		StartDate   *time.Time `json:"start_date"`
 		EndDate     *time.Time `json:"end_date"`
 	}
 
 	if err := c.ShouldBindJSON(&createProjectRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误: " + err.Error()})
 		return
+	}
+
+	// Validate dates
+	if createProjectRequest.StartDate != nil && createProjectRequest.EndDate != nil {
+		if createProjectRequest.EndDate.Before(*createProjectRequest.StartDate) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "结束时间不能早于开始时间"})
+			return
+		}
 	}
 
 	status := models.ProjectStatusActive
@@ -134,6 +144,7 @@ func (h *ProjectHandler) GetTeamProjects(c *gin.Context) {
 }
 
 // UpdateProject 更新项目
+// PUT /api/projects/:projectId
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	projectID, err := strconv.ParseUint(c.Param("projectId"), 10, 32)
 	if err != nil {
@@ -142,15 +153,15 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	}
 
 	var updateProjectRequest struct {
-		Name        *string               `json:"name"`
-		Description *string               `json:"description"`
+		Name        *string               `json:"name" binding:"omitempty,min=1,max=100"`
+		Description *string               `json:"description" binding:"omitempty,max=500"`
 		Status      *models.ProjectStatus `json:"status"`
 		StartDate   *time.Time            `json:"start_date"`
 		EndDate     *time.Time            `json:"end_date"`
 	}
 
 	if err := c.ShouldBindJSON(&updateProjectRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数错误: " + err.Error()})
 		return
 	}
 
@@ -184,6 +195,7 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 }
 
 // DeleteProject 删除项目
+// DELETE /api/projects/:projectId
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	projectID, err := strconv.ParseUint(c.Param("projectId"), 10, 32)
 	if err != nil {

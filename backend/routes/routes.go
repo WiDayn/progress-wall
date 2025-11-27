@@ -95,9 +95,18 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			projectHandler.GetTeamProjects,
 		)
 		protected.GET("/projects", projectHandler.GetProjects)
-		protected.GET("/projects/:projectId", projectHandler.GetProject)
-		protected.PUT("/projects/:projectId", projectHandler.UpdateProject)
-		protected.DELETE("/projects/:projectId", projectHandler.DeleteProject)
+		protected.GET("/projects/:projectId", 
+			rbac.RequireProjectAccess("view", "projectId", "project"),
+			projectHandler.GetProject,
+		)
+		protected.PUT("/projects/:projectId", 
+			rbac.RequireProjectAccess("manage", "projectId", "project"),
+			projectHandler.UpdateProject,
+		)
+		protected.DELETE("/projects/:projectId", 
+			rbac.RequireProjectAccess("manage", "projectId", "project"),
+			projectHandler.DeleteProject,
+		)
 
 		// 看板相关
 		protected.GET("/boards", boardHandler.GetBoards)

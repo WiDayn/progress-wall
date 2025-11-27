@@ -118,7 +118,7 @@ func (h *TeamHandler) AddMember(c *gin.Context) {
 		req.Role = models.TeamRoleMember // Default to member
 	}
 
-	if err := h.teamService.AddMember(uint(teamID), req.UserID, req.Role); err != nil {
+	if err := h.teamService.AddTeamMember(uint(teamID), req.UserID, req.Role); err != nil {
 		if err == services.ErrUserAlreadyMember {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
