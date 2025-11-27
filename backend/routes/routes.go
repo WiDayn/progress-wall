@@ -10,8 +10,8 @@ import (
 	"progress-wall-backend/handlers/column"
 	"progress-wall-backend/handlers/project"
 	"progress-wall-backend/handlers/task"
-	"progress-wall-backend/handlers/user"
 	"progress-wall-backend/handlers/team"
+	"progress-wall-backend/handlers/user"
 	"progress-wall-backend/middleware"
 	"progress-wall-backend/services"
 
@@ -31,10 +31,19 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	// 配置CORS
 	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = strings.Split(cfg.CORS.AllowOrigins, ",")
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	corsConfig.AllowCredentials = true
+
+	// 在开发环境下允许所有Origin，避免跨域问题
+	if cfg.Server.Mode == "release" {
+		corsConfig.AllowOrigins = strings.Split(cfg.CORS.AllowOrigins, ",")
+	} else {
+		corsConfig.AllowOriginFunc = func(origin string) bool {
+			return true
+		}
+	}
+
 	r.Use(cors.New(corsConfig))
 
 	permService := services.NewPermissionService(db)
@@ -95,38 +104,38 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			projectHandler.GetTeamProjects,
 		)
 		protected.GET("/projects", projectHandler.GetProjects)
-		protected.GET("/projects/:projectId", 
+		protected.GET("/projects/:projectId",
 			rbac.RequireProjectAccess("view", "projectId", "project"),
 			projectHandler.GetProject,
 		)
-		protected.PUT("/projects/:projectId", 
+		protected.PUT("/projects/:projectId",
 			rbac.RequireProjectAccess("manage", "projectId", "project"),
 			projectHandler.UpdateProject,
 		)
-		protected.DELETE("/projects/:projectId", 
+		protected.DELETE("/projects/:projectId",
 			rbac.RequireProjectAccess("manage", "projectId", "project"),
 			projectHandler.DeleteProject,
 		)
 
 		// 看板相关
 		protected.GET("/boards", boardHandler.GetBoards)
-		protected.GET("/projects/:projectId/boards", 
+		protected.GET("/projects/:projectId/boards",
 			rbac.RequireProjectAccess("view", "projectId", "project"),
 			boardHandler.GetBoardsByProject,
 		)
-		protected.POST("/projects/:projectId/boards", 
+		protected.POST("/projects/:projectId/boards",
 			rbac.RequireProjectAccess("manage", "projectId", "project"),
 			boardHandler.CreateBoard,
 		)
-		protected.GET("/boards/:boardId", 
+		protected.GET("/boards/:boardId",
 			rbac.RequireProjectAccess("view", "boardId", "board"),
 			boardHandler.GetBoard,
 		)
-		protected.PUT("/boards/:boardId", 
+		protected.PUT("/boards/:boardId",
 			rbac.RequireProjectAccess("manage", "boardId", "board"),
 			boardHandler.UpdateBoard,
 		)
-		protected.DELETE("/boards/:boardId", 
+		protected.DELETE("/boards/:boardId",
 			rbac.RequireProjectAccess("manage", "boardId", "board"),
 			boardHandler.DeleteBoard,
 		)
@@ -136,7 +145,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			rbac.RequireProjectAccess("view", "boardId", "board"),
 			columnHandler.GetColumns,
 		)
-		protected.POST("/boards/:boardId/columns", 
+		protected.POST("/boards/:boardId/columns",
 			// Only admins can create columns
 			rbac.RequireProjectAccess("manage", "boardId", "board"),
 			columnHandler.CreateColumn,
@@ -163,7 +172,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			rbac.RequireProjectAccess("view", "columnId", "column"),
 			taskHandler.CreateTask,
 		)
-		protected.GET("/tasks/:taskId", 
+		protected.GET("/tasks/:taskId",
 			rbac.RequireProjectAccess("view", "taskId", "task"),
 			taskHandler.GetTask,
 		)
@@ -171,7 +180,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			rbac.RequireProjectAccess("view", "taskId", "task"),
 			taskHandler.UpdateTask,
 		)
-		protected.DELETE("/tasks/:taskId", 
+		protected.DELETE("/tasks/:taskId",
 			rbac.RequireProjectAccess("view", "taskId", "task"),
 			taskHandler.DeleteTask,
 		)
@@ -179,7 +188,7 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			rbac.RequireProjectAccess("view", "taskId", "task"),
 			taskHandler.MoveTask,
 		)
-	
+
 		// 看板活动日志
 		protected.GET("/boards/:boardId/activities", boardActivitiesHandler.GetBoardActivities)
 

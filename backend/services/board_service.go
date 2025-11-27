@@ -76,12 +76,63 @@ func (s *BoardService) GetBoardsByProjectID(projectID uint) ([]models.Board, err
 	return boards, nil
 }
 
-// CreateBoard 创建看板
+// CreateBoard 创建看板（带默认列）
 func (s *BoardService) CreateBoard(board *models.Board) error {
-	if err := s.db.Create(board).Error; err != nil {
-		return fmt.Errorf("创建看板失败: %v", err)
-	}
-	return nil
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(board).Error; err != nil {
+			return fmt.Errorf("创建看板失败: %v", err)
+		}
+
+		// 初始化默认列
+		defaultColumns := []models.Column{
+			{
+				Name:        "Backlog",
+				Description: "待办事项",
+				Color:       "#6B7280", // Gray
+				Position:    1000,
+				BoardID:     board.ID,
+				Status:      models.ColumnStatusActive,
+			},
+			{
+				Name:        "Ready",
+				Description: "准备就绪",
+				Color:       "#3B82F6", // Blue
+				Position:    2000,
+				BoardID:     board.ID,
+				Status:      models.ColumnStatusActive,
+			},
+			{
+				Name:        "In processing",
+				Description: "进行中",
+				Color:       "#F59E0B", // Yellow
+				Position:    3000,
+				BoardID:     board.ID,
+				Status:      models.ColumnStatusActive,
+			},
+			{
+				Name:        "In review",
+				Description: "审核中",
+				Color:       "#8B5CF6", // Purple
+				Position:    4000,
+				BoardID:     board.ID,
+				Status:      models.ColumnStatusActive,
+			},
+			{
+				Name:        "Done",
+				Description: "已完成",
+				Color:       "#10B981", // Green
+				Position:    5000,
+				BoardID:     board.ID,
+				Status:      models.ColumnStatusActive,
+			},
+		}
+
+		if err := tx.Create(&defaultColumns).Error; err != nil {
+			return fmt.Errorf("创建默认列失败: %v", err)
+		}
+
+		return nil
+	})
 }
 
 // UpdateBoard 更新看板

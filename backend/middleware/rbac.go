@@ -94,6 +94,7 @@ func (m *RBACMiddleware) RequireProjectAccess(level string, paramKey string, idT
 				c.Abort()
 				return
 			}
+			projectID = task.ProjectID
 		
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ID type for RBAC"})

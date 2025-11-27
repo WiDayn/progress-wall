@@ -1,39 +1,50 @@
 <template>
-  <div class="bg-muted/50 rounded-lg p-4 min-h-[500px]" :data-column-id="column.id">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="text-lg font-semibold">
-        {{ column.title }}
+  <div class="bg-muted/50 rounded-lg p-4 min-h-[500px] w-80 flex-shrink-0 flex flex-col" :data-column-id="column.id">
+    <div class="flex justify-between items-center mb-4 flex-none">
+      <h3 class="text-lg font-semibold truncate mr-2">
+        {{ column.name || column.title }}
       </h3>
-      <span class="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-full">
-        {{ column.tasks.length }}
+      <span class="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-full flex-none">
+        {{ column.tasks?.length || 0 }}
       </span>
     </div>
     
-    <VueDraggable
-      v-model="column.tasks"
-      :group="{ name: 'tasks', pull: true, put: true }"
-      :animation="200"
-      ghost-class="ghost-task"
-      chosen-class="chosen-task"
-      drag-class="drag-task"
-      class="space-y-3 min-h-[200px]"
-      @end="onDragEnd"
-    >
-      <TaskCard
-        v-for="task in column.tasks"
-        :key="task.id"
-        :task="task"
-        @select="$emit('select-task', task)"
-        @delete="$emit('delete-task', task.id)"
-      />
-      
-      <div
-        v-if="column.tasks.length === 0"
-        class="text-center text-muted-foreground py-8 pointer-events-none"
+    <div class="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1 scrollbar-thin">
+      <VueDraggable
+        v-model="column.tasks"
+        :group="{ name: 'tasks', pull: true, put: true }"
+        :animation="200"
+        ghost-class="ghost-task"
+        chosen-class="chosen-task"
+        drag-class="drag-task"
+        class="space-y-3 min-h-[100px]"
+        @end="onDragEnd"
       >
-        暂无任务
-      </div>
-    </VueDraggable>
+        <TaskCard
+          v-for="task in column.tasks"
+          :key="task.id"
+          :task="task"
+          :data-task-id="task.id"
+          @select="$emit('select-task', task)"
+          @delete="$emit('delete-task', task.id)"
+        />
+        
+        <div
+          v-if="!column.tasks || column.tasks.length === 0"
+          class="text-center text-muted-foreground py-8 pointer-events-none"
+        >
+          暂无任务
+        </div>
+      </VueDraggable>
+    </div>
+
+    <!-- 底部添加按钮 -->
+    <button 
+      @click="$emit('add-task', column.id)"
+      class="mt-2 w-full py-2 flex items-center justify-center text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors border border-transparent hover:border-border border-dashed flex-none"
+    >
+      + 添加任务
+    </button>
   </div>
 </template>
 
@@ -51,7 +62,8 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'select-task': [task: any]
-  'delete-task': [taskId: string]
+  'delete-task': [taskId: number]
+  'add-task': [columnId: number]
 }>()
 
 const kanbanStore = useKanbanStore()
@@ -60,35 +72,32 @@ const kanbanStore = useKanbanStore()
 const onDragEnd = async (event: any) => {
   const { item, to, from, newIndex, oldIndex } = event
   
-  // 获取被拖拽的任务ID - item 本身就是 Card 元素
-  const taskId = item.getAttribute('data-task-id')
-  console.log('拖拽结束 - taskId:', taskId, 'event:', event)
-  if (!taskId) {
+  // 获取被拖拽的任务ID
+  const taskIdStr = item.getAttribute('data-task-id')
+  if (!taskIdStr) {
     console.error('未找到 taskId')
     return
   }
+  const taskId = parseInt(taskIdStr, 10)
 
   // 获取目标列ID
   const targetColumnElement = to.closest('[data-column-id]')
-  const targetColumnId = targetColumnElement?.getAttribute('data-column-id')
-  console.log('目标列 - targetColumnId:', targetColumnId)
-  if (!targetColumnId) {
+  const targetColumnIdStr = targetColumnElement?.getAttribute('data-column-id')
+  if (!targetColumnIdStr) {
     console.error('未找到 targetColumnId')
     return
   }
+  const targetColumnId = parseInt(targetColumnIdStr, 10)
 
   // 如果是同一列内的重新排序，或者跨列移动
   if (from !== to || newIndex !== oldIndex) {
-    console.log('开始调用API - taskId:', taskId, 'targetColumnId:', targetColumnId, 'newIndex:', newIndex)
+    console.log('拖拽移动 - taskId:', taskId, 'to column:', targetColumnId, 'index:', newIndex)
     try {
       await kanbanStore.moveTaskWithDrag(taskId, targetColumnId, newIndex)
-      console.log('API调用成功')
     } catch (error) {
       console.error('拖拽移动任务失败:', error)
-      // 这里可以添加错误提示
+      // 可以在这里添加 toast 提示
     }
-  } else {
-    console.log('未触发移动 - 位置未改变')
   }
 }
 </script>
@@ -102,25 +111,12 @@ const onDragEnd = async (event: any) => {
 }
 
 :deep(.chosen-task) {
-  transform: rotate(5deg);
+  transform: rotate(2deg);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 :deep(.drag-task) {
-  transform: rotate(5deg);
-  opacity: 0.8;
-}
-
-/* 拖拽区域样式 */
-.sortable-ghost {
-  opacity: 0.5;
-}
-
-.sortable-chosen {
-  opacity: 0.8;
-}
-
-.sortable-drag {
-  opacity: 0.6;
+  transform: rotate(2deg);
+  opacity: 0.9;
 }
 </style>
