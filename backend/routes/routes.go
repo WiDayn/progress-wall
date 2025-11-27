@@ -8,6 +8,7 @@ import (
 	"progress-wall-backend/handlers/auth"
 	"progress-wall-backend/handlers/board"
 	"progress-wall-backend/handlers/column"
+	"progress-wall-backend/handlers/notification"
 	"progress-wall-backend/handlers/project"
 	"progress-wall-backend/handlers/task"
 	"progress-wall-backend/handlers/team"
@@ -63,6 +64,8 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	teamHandler := team.NewTeamHandler(db)
 	boardActivitiesHandler := activity.NewBoardActivitiesHandler(db)
 	taskActivitiesHandler := activity.NewTaskActivitiesHandler(db)
+	// 添加通知处理器初始化
+	notificationHandler := notification.NewNotificationHandler(db)
 
 	// 公开路由（不需要认证）
 	api := r.Group("/api")
@@ -72,6 +75,9 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			authGroup.POST("/login", loginHandler.Login)
 			authGroup.POST("/register", registerHandler.Register)
 		}
+
+		// 通知相关
+		api.POST("/notifications", notificationHandler.ReceiveTaskNotification)
 	}
 
 	// 受保护的路由（需要认证）
