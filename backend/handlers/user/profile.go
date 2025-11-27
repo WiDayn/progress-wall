@@ -86,8 +86,11 @@ func (h *ProfileHandler) UploadAvatar(c *gin.Context) {
 	savePath := filepath.Join("uploads", "avatars", filename)
 
 	// 保存文件
+	// c.SaveUploadedFile 会自动打开和关闭文件流，无需手动处理
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存文件失败"})
+		// 记录具体错误日志以便排查
+		fmt.Printf("File save error: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "文件保存失败，请检查服务器存储权限"})
 		return
 	}
 

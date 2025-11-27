@@ -96,8 +96,10 @@ func (s *TaskService) DeleteTask(taskID uint) error {
 }
 
 // MoveTask 移动任务到新列和新位置
-func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, userID uint, username string) error {
+func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, userId uint, userName string) error {
 	tx := s.db.Begin()
+	defer tx.Rollback()
+
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -107,7 +109,6 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 	// 获取任务
 	var task models.Task
 	if err := tx.Preload("Column").First(&task, taskID).Error; err != nil {
-		tx.Rollback()
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrTaskNotFound
 		}
@@ -117,7 +118,6 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 	// 获取看板ID（通过Column）
 	var column models.Column
 	if err := tx.First(&column, task.ColumnID).Error; err != nil {
-		tx.Rollback()
 		return fmt.Errorf("查询列失败: %v", err)
 	}
 	boardID := column.BoardID
@@ -129,7 +129,6 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 	// 获取新列名称
 	var newColumn models.Column
 	if err := tx.First(&newColumn, newColumnID).Error; err != nil {
-		tx.Rollback()
 		return fmt.Errorf("查询新列失败: %v", err)
 	}
 	newColumnName := newColumn.Name
@@ -140,7 +139,6 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 		if err := tx.Model(&models.Task{}).
 			Where("column_id = ? AND position > ?", oldColumnID, oldPosition).
 			Update("position", gorm.Expr("position - 1")).Error; err != nil {
-			tx.Rollback()
 			return fmt.Errorf("更新旧列任务位置失败: %v", err)
 		}
 
@@ -148,7 +146,6 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 		if err := tx.Model(&models.Task{}).
 			Where("column_id = ? AND position >= ?", newColumnID, newOrder).
 			Update("position", gorm.Expr("position + 1")).Error; err != nil {
-			tx.Rollback()
 			return fmt.Errorf("更新新列任务位置失败: %v", err)
 		}
 
@@ -158,14 +155,13 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 				"column_id": newColumnID,
 				"position":  newOrder,
 			}).Error; err != nil {
-			tx.Rollback()
 			return fmt.Errorf("更新任务位置失败: %v", err)
 		}
 
 		// 记录跨列移动日志
 		log := models.ActivityLog{
-			UserID:      userID,
-			Username:    username,
+			UserID:      userId,
+			Username:    userName,
 			ActionType:  models.ActionMove,
 			EntityType:  models.EntityTask,
 			EntityID:    task.ID,
@@ -174,8 +170,7 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 			ProjectID:   &task.ProjectID,
 			Description: fmt.Sprintf("moved this task from \"%s\" to \"%s\"", oldColumnName, newColumnName),
 		}
-		if err := tx.Create(&log).Error; err != nil {
-			tx.Rollback()
+		if err := s.createActivityLog(tx, &log); err != nil {
 			return fmt.Errorf("创建活动日志失败: %v", err)
 		}
 
@@ -186,7 +181,6 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 			if err := tx.Model(&models.Task{}).
 				Where("column_id = ? AND position > ? AND position <= ?", newColumnID, oldPosition, newOrder).
 				Update("position", gorm.Expr("position - 1")).Error; err != nil {
-				tx.Rollback()
 				return fmt.Errorf("更新任务位置失败: %v", err)
 			}
 		} else if oldPosition > newOrder {
@@ -194,18 +188,16 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 			if err := tx.Model(&models.Task{}).
 				Where("column_id = ? AND position >= ? AND position < ?", newColumnID, newOrder, oldPosition).
 				Update("position", gorm.Expr("position + 1")).Error; err != nil {
-				tx.Rollback()
 				return fmt.Errorf("更新任务位置失败: %v", err)
 			}
 		}
 
 		// 更新任务位置
 		if err := tx.Model(&models.Task{}).Where("id = ?", task.ID).Update("position", newOrder).Error; err != nil {
-			tx.Rollback()
 			return fmt.Errorf("更新任务位置失败: %v", err)
 		}
 		
-		// 同列移动不记录详细日志，或者记录简单的位置变更（可选，这里暂时不记录以免刷屏）
+		// 同列移动暂不记录日志
 	}
 
 	// 提交事务并验证
@@ -213,4 +205,9 @@ func (s *TaskService) MoveTask(taskID uint, newColumnID uint, newOrder int, user
 		return fmt.Errorf("提交事务失败: %v", err)
 	}
 	return nil
+}
+
+// createActivityLog 创建活动日志的内部辅助方法
+func (s *TaskService) createActivityLog(tx *gorm.DB, log *models.ActivityLog) error {
+	return tx.Create(log).Error
 }
